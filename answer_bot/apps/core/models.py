@@ -12,3 +12,5 @@ class ChatHistory(models.Model):
     user = models.ForeignKey(Users, on_delete=models.SET_NULL, null=True)
     response = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_user_edited = models.BooleanField(default=False)
+    edited_response = models.TextField(blank=True, null=True)

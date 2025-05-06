@@ -13,10 +13,9 @@
     flex-direction: column;
   }
 
-
   #chatBox {
     flex: 1;
-    padding: 20px 20px 80px 245px;  /* ⬅ left & bottom padding */
+    padding: 20px 20px 80px 245px;
     overflow-y: auto;
   }
 
@@ -45,11 +44,17 @@
     margin-bottom: 5px;
   }
 
+  .edit-area {
+    display: none;
+    width: 100%;
+    margin-top: 5px;
+  }
+
   footer {
     position: fixed;
     bottom: 0;
-    left: 225px;  /* ⬅ align with sidebar */
-    right: 0;
+    left: 250px;
+    right: 250px;
     padding: 10px 20px;
     background: #fff;
     display: flex;
@@ -77,23 +82,52 @@
   }
 </style>
 
-</head>
-<body>
-
-
 <div id="chatBox"></div>
 
 <footer>
-<input type="text" id="questionInput" placeholder="Type your message...">
-<button onclick="sendMessage()">Send</button>
+  <input type="text" id="questionInput" placeholder="Type your message...">
+  <button onclick="sendMessage()">Send</button>
 </footer>
 
 <script>
-function appendMessage(text, sender = "bot") {
+function appendMessage(text, sender = "bot", originalQuestion = "") {
   const box = document.getElementById('chatBox');
   const message = document.createElement('div');
   message.classList.add('message', sender);
-  message.innerHTML = `<span class="sender">${sender === 'bot' ? 'ChatGPT:' : 'You:'}</span>${text}`;
+
+  if (sender === 'bot') {
+    // Editable bot message
+    message.innerHTML = `
+      <span class="sender">ChatGPT:</span>
+      <div class="response-text">${text}</div>
+      <textarea class="edit-area">${text}</textarea>
+      <button class="edit-btn">✏️ Edit</button>
+      <button class="resend-btn" style="display:none;">⏎ Send Again</button>
+    `;
+
+    const editBtn = message.querySelector(".edit-btn");
+    const resendBtn = message.querySelector(".resend-btn");
+    const textArea = message.querySelector(".edit-area");
+    const responseText = message.querySelector(".response-text");
+
+    editBtn.onclick = function () {
+      textArea.style.display = "block";
+      resendBtn.style.display = "inline-block";
+      responseText.style.display = "none";
+      editBtn.style.display = "none";
+    };
+
+    resendBtn.onclick = function () {
+      const editedResponse = textArea.value.trim();
+      if (!editedResponse) return;
+      resendEditedMessage(originalQuestion, editedResponse);
+    };
+
+  } else {
+    // Normal user message
+    message.innerHTML = `<span class="sender">You:</span>${text}`;
+  }
+
   box.appendChild(message);
   box.scrollTop = box.scrollHeight;
 }
@@ -116,13 +150,35 @@ function sendMessage() {
   })
   .then(res => res.json())
   .then(data => {
-    appendMessage(data.response, 'bot');
+    appendMessage(data.response, 'bot', question);  // Pass original question
   })
   .catch(err => {
     appendMessage("Error: Unable to get response.", 'bot');
   });
 }
+
+function resendEditedMessage(originalQuestion, editedResponse) {
+  appendMessage(editedResponse, 'user');
+
+  fetch("", {
+    method: "POST",
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': '{{ csrf_token }}'
+    },
+    body: JSON.stringify({
+      question: originalQuestion,
+      edited_response: editedResponse
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    appendMessage(data.response, 'bot', originalQuestion);  // Allow feedback loop
+  })
+  .catch(err => {
+    appendMessage("Error: Unable to resend edited message.", 'bot');
+  });
+}
 </script>
 
 {% endblock content %}
-  

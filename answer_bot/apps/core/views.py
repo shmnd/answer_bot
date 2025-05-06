@@ -48,7 +48,8 @@ class Homepage(LoginRequiredMixin, View):
                 question=question,
                 response=response_text,
                 is_user_edited=bool(edited_previous),
-                edited_response=edited_previous if edited_previous else None
+                edited_response=edited_previous if edited_previous else None,
+                user = request.user
             )
 
             return JsonResponse({"response": response_text})

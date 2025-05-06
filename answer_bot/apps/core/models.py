@@ -3,8 +3,8 @@ from apps.authentication.models import Users
 
 # Create your models here.
 
-class QuestionFeedback(models.Model):
-    qid = models.CharField(max_length=100, unique=True)
+class ChatHistory(models.Model):
+    qid = models.CharField(max_length=100, unique=True,blank=True, null=True)
     question = models.TextField(blank=True, null=True)
     gpt_answer = models.TextField(blank=True, null=True)
     edited_answer = models.TextField(blank=True, null=True)

@@ -3,23 +3,126 @@
 {% block content %}
 
 <style>
- h1 {
-    color: balck;
-    margin-left: 30%;
- }
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+
+  #chatBox {
+    flex: 1;
+    padding: 20px 20px 80px 245px;  /* ⬅ left & bottom padding */
+    overflow-y: auto;
+  }
+
+  .message {
+    max-width: 60%;
+    padding: 10px 15px;
+    margin: 10px 0;
+    border-radius: 10px;
+    line-height: 1.4;
+  }
+
+  .user {
+    background: #d4edda;
+    margin-left: auto;
+    text-align: right;
+  }
+
+  .bot {
+    background: #f8d7da;
+    margin-right: auto;
+  }
+
+  .sender {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
+  }
+
+  footer {
+    position: fixed;
+    bottom: 0;
+    left: 225px;  /* ⬅ align with sidebar */
+    right: 0;
+    padding: 10px 20px;
+    background: #fff;
+    display: flex;
+    border-top: 1px solid #ccc;
+  }
+
+  input[type="text"] {
+    flex: 1;
+    padding: 10px;
+    font-size: 16px;
+  }
+
+  button {
+    background: #287bff;
+    color: white;
+    border: none;
+    padding: 0 20px;
+    margin-left: 10px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: #0b5ed7;
+  }
 </style>
 
-<!--begin::Content wrapper-->
-<div class="d-flex flex-column flex-column-fluid">
-    <div id="root">
+</head>
+<body>
 
-    
-        <h1>hello my name is shamnad </h1>
-        
 
-    </div>
-</div>
+<div id="chatBox"></div>
 
+<footer>
+<input type="text" id="questionInput" placeholder="Type your message...">
+<button onclick="sendMessage()">Send</button>
+</footer>
+
+<script>
+function appendMessage(text, sender = "bot") {
+  const box = document.getElementById('chatBox');
+  const message = document.createElement('div');
+  message.classList.add('message', sender);
+  message.innerHTML = `<span class="sender">${sender === 'bot' ? 'ChatGPT:' : 'You:'}</span>${text}`;
+  box.appendChild(message);
+  box.scrollTop = box.scrollHeight;
+}
+
+function sendMessage() {
+  const input = document.getElementById('questionInput');
+  const question = input.value.trim();
+  if (!question) return;
+
+  appendMessage(question, 'user');
+  input.value = "";
+
+  fetch("", {
+    method: "POST",
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': '{{ csrf_token }}'
+    },
+    body: JSON.stringify({ question })
+  })
+  .then(res => res.json())
+  .then(data => {
+    appendMessage(data.response, 'bot');
+  })
+  .catch(err => {
+    appendMessage("Error: Unable to get response.", 'bot');
+  });
+}
+</script>
 
 {% endblock content %}
   

@@ -1,0 +1,90 @@
+{% extends 'layouts/guest.html' %}
+{% load static %}
+
+{% block content %}
+    <div class="d-flex flex-column flex-root">
+        <div class="d-flex flex-column flex-column-fluid bgi-position-y-bottom position-x-center bgi-no-repeat bgi-size-contain bgi-attachment-fixed">
+            <div class="d-flex flex-center flex-column flex-column-fluid p-10 pb-lg-20">
+                <div class="w-lg-500px bg-body rounded shadow-sm p-10 p-lg-15 mx-auto">
+
+                    <form class="form w-100" novalidate="novalidate" id="_sign_up_form" method="post" action="{% url 'authentication:signup' %}">
+                        {% csrf_token %}
+
+                        <div class="fv-row mb-10">
+                            <label class="form-label fs-6 fw-bolder text-dark">Email</label>
+                            <input class="form-control form-control-lg form-control-solid" id="signup-email" type="email" name="email" required />
+                        </div>
+
+                        <div class="fv-row mb-10">
+                            <label class="form-label fs-6 fw-bolder text-dark">Password</label>
+                            <div class="position-relative">
+                                <input class="form-control form-control-lg form-control-solid password-box" id="signup-password" type="password" name="password" required />
+                                <a href="#" class="toggle-password" onclick="togglePasswordVisibility(event, 'signup-password', 'password-icon-1')" 
+                                   style="position: absolute; top: 15px; right: 35px;">
+                                    <i id="password-icon-1" class="fas fa-eye-slash"></i>
+                                </a>
+                            </div>
+                        </div>
+                            
+                        <div class="fv-row mb-10">
+                            <label class="form-label fs-6 fw-bolder text-dark">Confirm Password</label>
+                            <div class="position-relative">
+                                <input class="form-control form-control-lg form-control-solid password-box" id="confirm-password" type="password" name="confirm_password" required />
+                                <a href="#" class="toggle-password" onclick="togglePasswordVisibility(event, 'confirm-password', 'password-icon-2')" 
+                                   style="position: absolute; top: 15px; right: 35px;">
+                                    <i id="password-icon-2" class="fas fa-eye-slash"></i>
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="text-center">
+                            <button type="submit" id="_sign_up_submit" class="btn btn-lg btn-primary w-100 mb-5">
+                                <span class="indicator-label">Sign Up</span>
+                                <span class="indicator-progress">Please wait...
+                                <span class="spinner-border spinner-border-sm align-middle ms-2"></span></span>
+                            </button>
+                        </div>
+
+                        <div class="text-center">
+                            <p class="text-muted">Already have an account? 
+                                <a href="{% url 'authentication:login' %}" class="text-primary fw-bolder">Login here</a>
+                            </p>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock content %}
+
+{% block script %}
+<link rel="stylesheet" href="{% static 'assets/css/style.css' %}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+<script>
+  function togglePasswordVisibility(event, inputId, iconId) {
+      event.preventDefault();
+      var passwordInput = document.getElementById(inputId);
+      var passwordIcon = document.getElementById(iconId);
+
+      if (passwordInput.type === "password") {
+          passwordInput.type = "text";
+          passwordIcon.classList.remove("fa-eye-slash");
+          passwordIcon.classList.add("fa-eye");
+      } else {
+          passwordInput.type = "password";
+          passwordIcon.classList.remove("fa-eye");
+          passwordIcon.classList.add("fa-eye-slash");
+      }
+  }
+</script>
+
+<script>
+    var api_config = {
+        "authentication_url": "{% url 'authentication:signup' %}",
+    }
+</script>
+
+<script src="{% static 'assets/js/custom/pages/authentication/signup.js' %}?time={% now 'h:i:s' %}" ></script>
+{% endblock script %}

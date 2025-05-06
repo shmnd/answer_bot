@@ -30,7 +30,7 @@ debug.log
 /media/assets
 /.vscode
 admin_generator.txt
-
+static/
 
 # Ignore all migration files except __init__.py
 **/migrations/*.py
@@ -54,7 +54,6 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 media
-whatsapp_received
 avatars
 svg
 email-images

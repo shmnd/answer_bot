@@ -160,4 +160,4 @@ LOGIN_URL = '/auth/login/'
 
 AUTH_USER_MODEL = 'authentication.Users'
 
-OPEN_AI_API_KEY1 = os.getenv('OPEN_AI_API_KEY1')
+OPEN_AI_API_KEY = os.getenv('OPEN_AI_API_KEY')

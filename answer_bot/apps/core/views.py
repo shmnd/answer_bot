@@ -37,7 +37,7 @@ class Homepage(LoginRequiredMixin, View):
             ---
 
             **Final Question (Improved)**  
-            <Reword the question clearly, concisely, and medically correctly.>
+            <Reword the question clearly, explantion, concisely, and medically correctly.>
 
             **All Options (Improved)**  
             A. <Option A – include full form or medical expansion if applicable>  
@@ -56,12 +56,15 @@ class Homepage(LoginRequiredMixin, View):
 
             <Optional follow-up sentence leading into a product list>
 
-            - <Product or component 1 – with short description>  
-            - <Product or component 2 – with short description>  
-            - <Product or component 3 – with short description>
+            <Optional transition sentence leading into a breakdown or supporting details>
 
+            - Why this is the correct answer:  
+                - <Point 1>  
+                - <Point 2>  
+                - <Point 3>
+            of Incorrect Options**  
 
-            ❌ **Explanation of Incorrect Options**  
+            
             A. <Option A – Full Form>:  
             • <Point1-wise explanation of why it is incorrect>
             • <Point2-wise explanation of why it is incorrect>

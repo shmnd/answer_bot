@@ -109,9 +109,23 @@
     white-space: pre-wrap;
   }
   
+  #loadingIndicator {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #287bff;
+    color: white;
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    display: none;
+    z-index: 999;
+  }
+  
 
 </style>
-
+<div id="loadingIndicator">Generating response...</div>
 <div id="chatBox"></div>
 
 <footer>
@@ -170,6 +184,8 @@ function sendMessage() {
   appendMessage(question, 'user');
   input.value = "";
 
+  document.getElementById("loadingIndicator").style.display = "block"; // show loading
+
   fetch("", {
     method: "POST",
     headers: {
@@ -180,15 +196,21 @@ function sendMessage() {
   })
   .then(res => res.json())
   .then(data => {
-    appendMessage(data.response, 'bot', question);  // Pass original question
+    appendMessage(data.response, 'bot', question);
   })
   .catch(err => {
     appendMessage("Error: Unable to get response.", 'bot');
+  })
+  .finally(() => {
+    document.getElementById("loadingIndicator").style.display = "none";
   });
 }
 
+
 function resendEditedMessage(originalQuestion, editedResponse) {
   appendMessage(editedResponse, 'user');
+
+  document.getElementById("loadingIndicator").style.display = "block"; // show loading
 
   fetch("", {
     method: "POST",
@@ -203,12 +225,16 @@ function resendEditedMessage(originalQuestion, editedResponse) {
   })
   .then(res => res.json())
   .then(data => {
-    appendMessage(data.response, 'bot', originalQuestion);  // Allow feedback loop
+    appendMessage(data.response, 'bot', originalQuestion);
   })
   .catch(err => {
     appendMessage("Error: Unable to resend edited message.", 'bot');
+  })
+  .finally(() => {
+    document.getElementById("loadingIndicator").style.display = "none";
   });
 }
+
 </script>
 
 {% endblock content %}

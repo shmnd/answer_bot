@@ -1,0 +1,34 @@
+{% extends 'layouts/apps.html' %}
+{% load static %}
+{% block content %}
+
+<h2 style='margin-left:20%'>Upload MCQ JSON File</h2>
+
+<form method="post" enctype="multipart/form-data" style='margin-left:20%'>
+    {% csrf_token %}
+    <input type="file" name="json_file" accept=".json" required>
+    <button type="submit" class="btn btn-primary mt-2">Convert</button>
+</form>
+
+{% if mcqs %}
+    <h3 class="mt-4">Converted MCQs</h3>
+    <ul>
+        {% for mcq in mcqs %}
+            <li>
+                <strong>Q{{ forloop.counter }}:</strong>
+                <div class="question-body">{{ mcq.question|safe }}</div>
+                <div class="options">
+                    <p>A. {{ mcq.option_a }}</p>
+                    <p>B. {{ mcq.option_b }}</p>
+                    <p>C. {{ mcq.option_c }}</p>
+                    <p>D. {{ mcq.option_d }}</p>
+                </div>
+                <p><strong>Answer:</strong> {{ mcq.correct_option }}</p>
+                <div class="explanation">{{ mcq.explanation|safe }}</div>
+                <hr>
+            </li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+{% endblock content %}

@@ -156,9 +156,9 @@ def convert_mcqs(request):
                 explanation_text = parsed_item.pop('explanation_text', '')
                 
                 # Add these back if your model has these fields
-                # parsed_item['image_urls'] = image_urls
-                # parsed_item['question_text'] = question_text
-                # parsed_item['explanation_text'] = explanation_text
+                parsed_item['image_urls'] = image_urls
+                parsed_item['question_text'] = question_text
+                parsed_item['explanation_text'] = explanation_text
                 
                 MCQ.objects.update_or_create(qid=qid, defaults=parsed_item)
                 mcqs.append({**parsed_item, 'qid': qid})  # Add qid back for display
@@ -173,3 +173,4 @@ def convert_mcqs(request):
         'success_message': success_message,
         'error_message': error_message
     })
+    

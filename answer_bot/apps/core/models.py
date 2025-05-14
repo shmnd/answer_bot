@@ -14,3 +14,4 @@ class ChatHistory(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     is_user_edited = models.BooleanField(default=False)
     edited_response = models.TextField(blank=True, null=True)
+    grade = models.IntegerField(blank=True, null=True)

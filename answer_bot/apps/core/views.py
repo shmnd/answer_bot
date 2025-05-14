@@ -1,13 +1,14 @@
-from django.conf import settings
-from openai import OpenAI  # ✅ NEW IMPORT
+import os
 import json
+from django.conf import settings
+from openai import OpenAI
 from django.http import JsonResponse
-from .models import ChatHistory
 from django.views import View
 from django.shortcuts import render
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.mixins import LoginRequiredMixin
+from .models import ChatHistory
 
 
 client = OpenAI(api_key=settings.OPEN_AI_API_KEY) 
@@ -26,7 +27,7 @@ class Homepage(LoginRequiredMixin, View):
             explanation = data.get("explanation", "").strip()
 
             if not question:
-                return JsonResponse({"response": "Question cannot be empty."})
+                return JsonResponse({"response": "Question cannot be empty."}, status=400)
 
             system_prompt = """
                 You are a clinical MCQ assistant designed to help students prepare for NEET PG, FMGE, and UPSC CMS.
@@ -107,11 +108,33 @@ class Homepage(LoginRequiredMixin, View):
 
             response = client.chat.completions.create(
                 model = "gpt-4-turbo",
-                messages= messages
+                messages=messages,
+                n=3,  # Generate 3 completions
+                temperature=0.9
             )
-
             # Accessing the response content using dot notation
             response_text = response.choices[0].message.content
+
+            all_completions = [choice.message.content for choice in response.choices]
+
+            # Save all for scoring later (RFT)
+            rft_data = {
+                "prompt": {
+                    "messages": [{"role": "user", "content": question}]
+                },
+                "completions": [
+                    {"message": {"role": "assistant", "content": c}, "score": 0.0}
+                    for c in all_completions
+                ]
+            }
+
+            # Save to file or DB table if you're batch processing
+            # rft_json_path = os.path.join(settings.BASE_DIR, "rft_dataset.jsonl")
+            rft_json_path = os.path.join(settings.MEDIA_ROOT, "rft_dataset.jsonl")
+
+            with open(rft_json_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(rft_data) + "\n")
+
             
              # Save both original and edited if provided
             ChatHistory.objects.create(

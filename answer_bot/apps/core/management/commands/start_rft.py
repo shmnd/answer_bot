@@ -10,8 +10,8 @@ class Command(BaseCommand):
         client = OpenAI(api_key=settings.OPEN_AI_API_KEY)
 
         response = client.fine_tuning.jobs.create(
-            training_file="file-FJzyHewwRPiPmwn1a1Hb9N",  # 👈 replace with your actual uploaded file ID
-            model="gpt-3.5-turbo",
+            training_file="file-BRq68EPonpwGZUQ55JpQHc",  # 👈 replace with your actual uploaded file ID
+            model="gpt-4"
         )
 
         self.stdout.write(self.style.SUCCESS("🎯 Fine-tuning job started!"))

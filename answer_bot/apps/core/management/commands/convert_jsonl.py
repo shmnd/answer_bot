@@ -40,14 +40,40 @@ class Command(BaseCommand):
                             f"Choose the correct option and explain why."
                         )
 
-                        # RFT format
+                        # Simulate dummy completions for testing RFT pipeline
+                        completions = [
+                            {
+                                "message": {
+                                    "role": "assistant",
+                                    "content": f"The correct answer is {correct_option}. {explanation}"
+                                },
+                                "score": 0.0
+                            },
+                            {
+                                "message": {
+                                    "role": "assistant",
+                                    "content": f"It might be A. But B is also possible due to overlapping features."
+                                },
+                                "score": 0.0
+                            },
+                            {
+                                "message": {
+                                    "role": "assistant",
+                                    "content": f"I think it could be D, based on location of the lesion."
+                                },
+                                "score": 0.0
+                            }
+                        ]
+
                         output_line = {
-                            "messages": [
-                                {"role": "user", "content": full_prompt}
-                            ],
-                            "compliant": correct_option,
-                            "explanation": explanation
+                            "prompt": {
+                                "messages": [
+                                    {"role": "user", "content": full_prompt}
+                                ]
+                            },
+                            "completions": completions
                         }
+
 
                         outfile.write(json.dumps(output_line, ensure_ascii=False) + "\n")
                         count += 1

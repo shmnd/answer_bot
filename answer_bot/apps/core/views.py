@@ -107,7 +107,7 @@ class Homepage(LoginRequiredMixin, View):
                 })
 
             response = client.chat.completions.create(
-                model = "gpt-4-turbo",
+                model = "gpt-4",
                 messages=messages,
                 n=3,  # Generate 3 completions
                 temperature=0.9

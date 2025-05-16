@@ -130,12 +130,16 @@ class Homepage(LoginRequiredMixin, View):
 
             # Save to file or DB table if you're batch processing
             # rft_json_path = os.path.join(settings.BASE_DIR, "rft_dataset.jsonl")
+
+            # rft_training_json_path = os.path.join(settings.MEDIA_ROOT, "rft_training_dataset.json") #to give directly to covnert to json1
             rft_json_path = os.path.join(settings.MEDIA_ROOT, "rft_dataset.jsonl")
 
-            with open(rft_json_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps(rft_data) + "\n")
+            with open(rft_json_path, "a", encoding="utf-8") as f1:
+                # with open(rft_training_json_path, "a", encoding="utf-8") as f2:
 
-            
+                f1.write(json.dumps(rft_data) + "\n")
+                    # f2.write(json.dumps(rft_data) + "\n")
+
              # Save both original and edited if provided
             ChatHistory.objects.create(
                 question=question,

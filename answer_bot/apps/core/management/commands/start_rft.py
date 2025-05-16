@@ -10,7 +10,7 @@ class Command(BaseCommand):
         client = OpenAI(api_key=settings.OPEN_AI_API_KEY)
 
         response = client.fine_tuning.jobs.create(
-            training_file="file-J2FhdNZfQkdmZevnetTMUt",  # 👈 replace with your actual uploaded file ID
+            training_file="file-HAFtnsY69Rdfc2Q2tEyrST",  # 👈 replace with your actual uploaded file ID
             model="gpt-4"
         )
 

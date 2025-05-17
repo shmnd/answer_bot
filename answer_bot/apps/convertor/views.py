@@ -1,9 +1,32 @@
-from django.shortcuts import render
-from django.contrib import messages
-from .models import MCQ
-import json
-from bs4 import BeautifulSoup
 import re
+import os
+import fitz
+import json
+from docx import Document
+import requests
+from django.core.files.base import ContentFile
+from django.shortcuts import render
+from apps.questions.models import Questions
+from bs4 import BeautifulSoup
+from django.contrib import messages
+
+
+def download_and_attach_image(question_obj, image_url):
+    """
+    Downloads an image from the URL and attaches it to the question's ImageField.
+    """
+    if not image_url or not image_url.startswith("http"):
+        print(f"⚠️ Skipped invalid image URL: '{image_url}'")
+        return
+
+    try:
+        response = requests.get(image_url)
+        if response.status_code == 200:
+            filename = image_url.split("/")[-1]
+            question_obj.image.save(filename, ContentFile(response.content), save=True)
+    except Exception as e:
+        print(f"⚠️ Failed to attach image from {image_url}: {e}")
+
 
 def clean_html(raw_html):
     """
@@ -35,6 +58,7 @@ def clean_html(raw_html):
     
     return text
 
+
 def clean_option_text(option_text):
     """
     Clean option text by removing extra whitespace, newlines, and HTML
@@ -51,6 +75,7 @@ def clean_option_text(option_text):
     
     return clean_text
 
+
 def extract_images(html_content):
     """
     Extract image URLs from HTML content
@@ -65,6 +90,7 @@ def extract_images(html_content):
             images.append(img['src'])
     
     return images
+
 
 def parse_question_json(data):
     """
@@ -124,53 +150,94 @@ def parse_question_json(data):
     print(f"Processed {processed_count} questions, skipped {skipped_count}")
     return parsed
 
+
+CHUNK_SIZE = 1000  # number of questions to insert at a time
+
+def chunkify(data_list, chunk_size):
+    for i in range(0, len(data_list), chunk_size):
+        yield data_list[i:i + chunk_size]
+
+
 def convert_mcqs(request):
     """
-    View to handle MCQ JSON file uploads and conversion
+    Accepts and parses uploaded MCQ files (PDF, TXT, JSON, DOCX) and uploads in chunks.
     """
     mcqs = []
     error_message = None
     success_message = None
-    
-    if request.method == 'POST' and request.FILES.get('json_file'):
+
+    if request.method == 'POST' and request.FILES.get('file'):
         try:
-            json_file = request.FILES['json_file']
-            
-            try:
-                data = json.load(json_file)
-            except json.JSONDecodeError as e:
-                error_message = f"Invalid JSON file: {str(e)}"
-                return render(request, 'convertor/convert_upload.html', {
-                    'mcqs': mcqs,
-                    'error_message': error_message
-                })
-            
-            # Parse the JSON data
-            parsed_data = parse_question_json(data)
-            
-            # Save to database and collect for display
-            for parsed_item in parsed_data:
-                qid = parsed_item.pop('qid')  # Remove qid from defaults
-                image_urls = parsed_item.pop('image_urls', [])  # Handle any fields not in your model
-                question_text = parsed_item.pop('question_text', '')
-                explanation_text = parsed_item.pop('explanation_text', '')
+            uploaded_file = request.FILES['file']
+            file_name = uploaded_file.name
+            ext = os.path.splitext(file_name)[1].lower()
+
+            content = ""
+
+            if ext == ".json":
+                try:
+                    data = json.load(uploaded_file)
+                    parsed_data = parse_question_json(data)
+
+                    for chunk in chunkify(parsed_data, CHUNK_SIZE):
+                        for parsed_item in chunk:
+                            qid = parsed_item['qid']
+                            correct_answer = parsed_item['correct_option']
+                            question = parsed_item['question_text']
+                            explanation = parsed_item['explanation_text']
+                            image_urls = parsed_item['image_urls']
+
+                            q_obj, created = Questions.objects.update_or_create(
+                                qid=qid,
+                                defaults={
+                                    "correct_answer": correct_answer,
+                                    "question": question,
+                                    "explanation": explanation,
+                                    "user": request.user
+                                }
+                            )
+
+                            if created and image_urls:
+                                download_and_attach_image(q_obj, image_urls[0])
+                            mcqs.append({**parsed_item, 'qid': qid})
+
+                            messages.success(request, "File uploaded successfully") 
+
+
+                except json.JSONDecodeError as e:
+                    error_message = f"Invalid JSON file: {str(e)}"
+
+            elif ext in [".txt", ".pdf", ".docx"]:
+                # Read content from TXT / PDF / DOCX
+                if ext == ".txt":
+                    content = uploaded_file.read().decode("utf-8")
+                elif ext == ".pdf":
+                    doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+                    content = "\n".join([page.get_text() for page in doc])
+                elif ext == ".docx":
+                    document = Document(uploaded_file)
+                    content = "\n".join([para.text for para in document.paragraphs])
+
+                # Split by double newline (basic question splitting)
+                questions = [q.strip() for q in content.split("\n\n") if q.strip()]
                 
-                # Add these back if your model has these fields
-                parsed_item['image_urls'] = image_urls
-                parsed_item['question_text'] = question_text
-                parsed_item['explanation_text'] = explanation_text
-                
-                MCQ.objects.update_or_create(qid=qid, defaults=parsed_item)
-                mcqs.append({**parsed_item, 'qid': qid})  # Add qid back for display
-            
-            success_message = f"Successfully processed {len(mcqs)} MCQs"
-            
+                for chunk in chunkify(questions, CHUNK_SIZE):
+                    bulk_objects = []
+                    for q in chunk:
+                        bulk_objects.append(Questions(
+                            question=q,
+                            user=request.user
+                        ))
+                    Questions.objects.bulk_create(bulk_objects)
+
+                success_message = print(f"Data saved successfully")
+            else:
+                error_message = f"❌ Unsupported file type: {ext}"
+
         except Exception as e:
-            error_message = f"Error processing file: {str(e)}"
-    
+            error_message = f"❌ Error processing file: {str(e)}"
+
     return render(request, 'convertor/convert_upload.html', {
-        'mcqs': mcqs,
         'success_message': success_message,
         'error_message': error_message
     })
-    

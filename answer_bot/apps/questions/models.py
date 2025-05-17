@@ -2,7 +2,7 @@ from django.db import models
 from apps.authentication.models import Users
 # Create your models here.
 
-class Qustions(models.Model):
+class Questions(models.Model):
     user              = models.ForeignKey(Users, on_delete=models.SET_NULL, null=True)
     qid               = models.IntegerField(unique=True,blank=True, null=True)
     is_correct        = models.BooleanField(default=True)

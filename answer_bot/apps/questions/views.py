@@ -7,7 +7,7 @@ from django.shortcuts import render
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.mixins import LoginRequiredMixin
-from .models import Qustions
+from .models import Questions
 
 
 client = OpenAI(api_key=settings.OPEN_AI_API_KEY) 
@@ -137,7 +137,7 @@ class QuestionPrompt(LoginRequiredMixin, View):
             # ''''''''''''''''''''''''''''''''''''''FOR RFT''''''''''''''''''''''''''''''''''''''''
 
             # Save both original and edited if provided
-            Qustions.objects.create(
+            Questions.objects.create(
                 question=question,
                 gpt_answer=response_text,
                 user = request.user

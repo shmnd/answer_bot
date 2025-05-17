@@ -51,6 +51,7 @@ LOCAL_APPS = [
     'apps.core',
     'apps.authentication',
     'apps.convertor',
+    'apps.questions'
 
 ]
 

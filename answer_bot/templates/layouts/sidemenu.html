@@ -54,7 +54,7 @@
                
                 <!--filter Sections-->
                 <div class="menu-item ">
-                    <a class="menu-link {% if request.resolver_match.url_name == 'convert-mcqs"' %}  active {% endif %}"
+                    <a class="menu-link {% if request.resolver_match.url_name == "convert-mcqs" %}  active {% endif %}"
                         href="{% url 'convertor:convert-mcqs' %}">
                         <span class="menu-icon">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-funnel" viewBox="0 0 16 16">
@@ -67,8 +67,8 @@
 
 
                 <div class="menu-item ">
-                    <a class="menu-link {% if request.resolver_match.url_name == 'convert-mcqs"' %}  active {% endif %}"
-                        href="{% url 'convertor:convert-mcqs' %}">
+                    <a class="menu-link {% if request.resolver_match.url_name == 'qusetion-prompt' %}  active {% endif %}"
+                        href="{% url 'questions:qusetion-prompt' %}">
                         <span class="menu-icon">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-question-circle" viewBox="0 0 16 16">
                             <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
@@ -77,9 +77,7 @@
                         </span>
                         <span class="menu-title">questions</span>
                     </a>
-                </div> 
-
-                
+                </div>   
                
             </div> 
         </div>

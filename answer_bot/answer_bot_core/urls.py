@@ -23,6 +23,8 @@ urlpatterns = [
     path('',include('apps.core.urls')),
     path('auth/',include('apps.authentication.urls')),
     path('convertor/',include('apps.convertor.urls')),
+    path('question/',include('apps.questions.urls')),
+
 
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
     re_path(r'^static/(?P<path>.*)$', serve, {'document_root': settings.STATIC_ROOT}),

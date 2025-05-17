@@ -1,0 +1,189 @@
+{% extends 'layouts/apps.html' %}
+{% load static %}
+{% block content %}
+
+<style>
+
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #chatBox {
+    flex: 1;
+    padding: 20px 20px 80px 245px;
+    overflow-y: auto;
+    border-radius: 10px;
+  }
+
+  .message {
+    max-width: 60%;
+    padding: 10px 15px;
+    margin: 10px 0;
+    border-radius: 10px;
+    line-height: 1.4;
+    border-radius: 10px;
+  }
+
+  .user {
+    background: #d4edda;
+    margin-left: auto;
+    text-align: right;
+  }
+
+  .bot {
+    background: #f8d7da;
+    margin-right: auto;
+  }
+
+  .sender {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
+    border-radius: 10px;
+  }
+
+
+  footer {
+    position: fixed;
+    bottom: 0;
+    left: 250px;
+    right: 250px;
+    padding: 10px 20px;
+    background: #fff;
+    display: flex;
+    border-top: 1px solid #ccc;
+    border-radius: 10px;
+  }
+
+  input[type="text"] {
+    flex: 1;
+    padding: 10px;
+    font-size: 16px;
+    border-radius: 10px;
+  }
+
+  button {
+    background: #287bff;
+    color: white;
+    border: none;
+    padding: 0 20px;
+    margin-left: 10px;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 10px;
+  }
+
+  button:hover {
+    background: #0b5ed7;
+  }
+
+  textarea {
+    flex: 1;
+    padding: 10px;
+    font-size: 16px;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+    font-family: inherit;
+    resize: none;
+    white-space: pre-wrap;
+    font-family: inherit;
+  }
+
+  .response-text {
+    white-space: pre-wrap;
+  }
+
+  .message.user {
+    white-space: pre-wrap;
+  }
+  
+  #loadingIndicator {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #287bff;
+    color: white;
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    display: none;
+    z-index: 999;
+  }
+  
+</style>
+
+<div id="loadingIndicator">Generating answers...</div>
+<div id="chatBox"></div>
+
+<footer>
+  <textarea id="questionInput" placeholder="Upload your questions..." rows="2"></textarea>
+  <button onclick="sendMessage()">Send</button>
+</footer>
+
+<script>
+
+
+    function appendMessage(text, sender = "bot", originalQuestion = "") {
+    const box = document.getElementById('chatBox');
+    const message = document.createElement('div');
+    message.classList.add('message', sender);
+
+    if (sender === 'bot') {
+        message.innerHTML = `
+        <span class="sender">ChatGPT:</span>
+        <div class="response-text">${text}</div>
+        `;
+
+        const responseText = message.querySelector(".response-text");
+
+    } else {
+        // Normal user message
+        message.innerHTML = `<span class="sender">You:</span>${text}`;
+    }
+
+    box.appendChild(message);
+    box.scrollTop = box.scrollHeight;
+    }
+
+    {% comment %} send message js {% endcomment %}
+    function sendMessage() {
+    const input = document.getElementById('questionInput');
+    const question = input.value.trim();
+
+    if (!question) return;
+
+    appendMessage(question, 'user');
+    input.value = "";
+
+    document.getElementById("loadingIndicator").style.display = "block"; // show loading
+
+    fetch("", {
+        method: "POST",
+        headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ question })
+    })
+    .then(res => res.json())
+    .then(data => {
+        appendMessage(data.response, 'bot', question);
+    })
+    .catch(err => {
+        appendMessage("Error: Unable to get response.", 'bot');
+    })
+    .finally(() => {
+        document.getElementById("loadingIndicator").style.display = "none";
+    });
+    }
+
+</script>
+
+{% endblock content %}

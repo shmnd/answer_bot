@@ -123,6 +123,22 @@ class ProcessMCQView(APIView):
                 )
                 improved_output = response_2.choices[0].message.content.strip()
 
+                question_match = re.search(r"\*\*Improved Question\*\*:\s*(.+)", improved_output)
+                instance.improved_question = question_match.group(1).strip() if question_match else None
+
+                # Extract improved options A–D
+                for option_key in ['A', 'B', 'C', 'D']:
+                    pattern = rf"{option_key}\.\s*(.+)"
+                    match = re.search(pattern, improved_output)
+                    if match:
+                        setattr(instance, f"improved_op{option_key.lower()}", match.group(1).strip())
+
+                # Optionally: extract correct answer again
+                correct_match = re.search(r"\*\*Correct Answer\*\*:\s*([A-D])\.\s*(.+)", improved_output)
+
+                if correct_match:
+                    instance.correct_answer = correct_match.group(1).strip()
+
                 instance.improved_explanation = improved_output
                 instance.is_verified = True
                 instance.save()

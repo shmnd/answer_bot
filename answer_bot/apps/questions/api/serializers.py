@@ -1,6 +1,6 @@
 # serializers.py
 from rest_framework import serializers
-from apps.questions.models import Questions
+from apps.questions.models import ImprovedResponse
 
 class MCQSerializer(serializers.ModelSerializer):
     question = serializers.CharField(required=True)
@@ -12,7 +12,7 @@ class MCQSerializer(serializers.ModelSerializer):
     explanation = serializers.CharField(required=True)
 
     class Meta:
-        model = Questions
+        model = ImprovedResponse
         fields = [
                 'question','opa','opb','opc','opd','correct_answer',
                 'explanation','gpt_answer', 'gpt_explanation',
@@ -37,4 +37,4 @@ class MCQSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        return Questions.objects.create(**validated_data)
+        return ImprovedResponse.objects.create(**validated_data)

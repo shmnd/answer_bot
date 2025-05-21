@@ -7,7 +7,7 @@ from django.shortcuts import render
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.mixins import LoginRequiredMixin
-from apps.questions.models import Questions, FlaggedQuestion
+from apps.questions.models import ImprovedResponse, FlaggedQuestion
 
 
 

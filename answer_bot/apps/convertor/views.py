@@ -6,7 +6,7 @@ from docx import Document
 import requests
 from django.core.files.base import ContentFile
 from django.shortcuts import render
-from apps.questions.models import Questions
+from apps.questions.models import ImprovedResponse
 from bs4 import BeautifulSoup
 from django.contrib import messages
 

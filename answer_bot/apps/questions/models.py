@@ -2,7 +2,7 @@ from django.db import models
 from apps.authentication.models import Users
 # Create your models here.
 
-class Questions(models.Model):
+class ImprovedResponse(models.Model):
     question                = models.TextField(blank=True, null=True)
     opa                     = models.TextField(blank=True, null=True)
     opb                     = models.TextField(blank=True, null=True)
@@ -40,7 +40,7 @@ class FlaggedQuestion(models.Model):
     resolved          = models.BooleanField(default=False)
     reviewed_by       = models.ForeignKey(Users, on_delete=models.SET_NULL, null=True, blank=True)
     created_at        = models.DateTimeField(auto_now_add=True)
-    original          = models.ForeignKey(Questions, null=True, on_delete=models.SET_NULL)
+    # original          = models.ForeignKey(Questions, null=True, on_delete=models.SET_NULL)ImprovedResponse
     reviewed          = models.BooleanField(default=False)
 
     def __str__(self):

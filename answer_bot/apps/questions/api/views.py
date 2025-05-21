@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from openai import OpenAI
 from django.conf import settings
-from apps.questions.models import Questions
+from apps.questions.models import ImprovedResponse
 from .serializers import MCQSerializer
 from answer_bot_core.helpers.response import ResponseInfo
 from drf_yasg.utils import swagger_auto_schema
@@ -17,22 +17,19 @@ class ProcessMCQView(APIView):
 
     serializer_class = MCQSerializer
 
-    @swagger_auto_schema(tags=["Questions"])
-
+    @swagger_auto_schema(request_body=MCQSerializer,tags=["Questions"])
     def post(self, request):
         try:
             data = request.data
-            print(data,'dataaaaaaaaaaaaaaaaaaaaa')
-
-            if data is not None and data:
-                serializer = self.serializer_class(data=data, context={'request': request})
-            else:
+            serializer = self.serializer_class(data=data, context={'request': request})
+            
+            if not serializer.is_valid():
                 self.response_format['status_code'] = status.HTTP_400_BAD_REQUEST
                 self.response_format["status"] = False
                 self.response_format["errors"] = serializer.errors
                 return Response(self.response_format, status=status.HTTP_400_BAD_REQUEST)
             
-            if not serializer.is_valid():
+            if not data:
                 self.response_format['status_code'] = status.HTTP_400_BAD_REQUEST
                 self.response_format["status"] = False
                 self.response_format["errors"] = serializer.errors
@@ -130,10 +127,16 @@ class ProcessMCQView(APIView):
                 instance.is_verified = True
                 instance.save()
 
-                return Response({
-                    "status": "success",
-                    "improved": improved_output
-                }, status=status.HTTP_200_OK)
+                # return Response({
+                #     "status": "success",
+                #     "improved": improved_output
+                # }, status=status.HTTP_200_OK)
+
+                self.response_format['status_code'] = status.HTTP_201_CREATED
+                self.response_format["message"] = "success"
+                self.response_format["status"] = True
+                self.response_format["data"] = improved_output
+                return Response(self.response_format, status=status.HTTP_201_CREATED)
 
             except Exception as e:
                 self.response_format['status_code'] = status.HTTP_500_INTERNAL_SERVER_ERROR

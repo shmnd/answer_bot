@@ -7,7 +7,8 @@ from django.shortcuts import render
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.mixins import LoginRequiredMixin
-from .models import Questions
+from apps.questions.models import Questions, FlaggedQuestion
+
 
 
 client = OpenAI(api_key=settings.OPEN_AI_API_KEY) 
@@ -146,3 +147,97 @@ class QuestionPrompt(LoginRequiredMixin, View):
             return JsonResponse({"response": response_text})
         except Exception as e:
             return JsonResponse({"response": f"Error: {str(e)}"})
+        
+
+
+def process_bulk_question(question_text):
+    normalized = question_text.strip().lower()
+
+    # Find similar question
+    existing_q = Questions.objects.filter(question__icontains=normalized).first()
+    print(existing_q,'heloooooooooooooooooooooooooooooo')
+
+    if not existing_q:
+        FlaggedQuestion.objects.create(
+            question=question_text,
+            reason="Not found in DB"
+        )
+        return
+
+    # Check if answer exists and matches
+    if not existing_q.correct_answer:
+        FlaggedQuestion.objects.create(
+            question=question_text,
+            reason="Missing answer",
+            original=existing_q
+        )
+        return
+
+    # Build prompt
+    system_prompt = """
+        You are a clinical MCQ assistant.
+
+        Task: Compare old and new GPT-generated explanations for the same MCQ.
+        - Decide which is better.
+        - If both have strengths, combine them.
+        - Return: improved explanation in clinical format.
+
+        Format:
+        **Question:** <rewrite improved>
+        **Answer:** <correct answer>
+        **Improved Explanation:**
+        - ✅ <why correct is correct>
+        - ❌ <why others are wrong>
+        - 🧠 Review Summary
+        """
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": f"Question: {question_text}"},
+        {"role": "user", "content": f"Old Explanation:\n{existing_q.gpt_answer}"}
+    ]
+
+    # Call GPT
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=messages
+    )
+
+    new_response = response.choices[0].message.content
+
+    # Save to DB
+    existing_q.old_gpt_answer = existing_q.gpt_answer
+    existing_q.gpt_answer = new_response
+    existing_q.save()
+
+
+
+def read_and_process_file(file):
+    import fitz  # For PDF
+    from docx import Document
+
+    name = file.name
+    ext = name.split('.')[-1].lower()
+
+    content = ""
+    if ext == "txt":
+        content = file.read().decode("utf-8")
+    elif ext == "pdf":
+        doc = fitz.open(stream=file.read(), filetype="pdf")
+        content = "\n".join([p.get_text() for p in doc])
+    elif ext == "docx":
+        doc = Document(file)
+        content = "\n".join([p.text for p in doc.paragraphs])
+    else:
+        raise ValueError("Unsupported file type.")
+
+    questions = [q.strip() for q in content.split("\n") if q.strip()]
+    for q in questions:
+        process_bulk_question(q)
+
+
+def upload_bulk_questions(request):
+    if request.method == "POST" and request.FILES.get("file"):
+        file = request.FILES["file"]
+        read_and_process_file(file)
+        return JsonResponse({"status": "processed"})

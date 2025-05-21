@@ -57,6 +57,7 @@ LOCAL_APPS = [
 
 THIRD_PARTY_APP = [
     'rest_framework',
+    'drf_yasg',
 ]
 
 INSTALLED_APPS = LOCAL_APPS + THIRD_PARTY_APP + INSTALLED_APPS
@@ -163,3 +164,23 @@ LOGIN_URL = '/auth/login/'
 AUTH_USER_MODEL = 'authentication.Users'
 
 OPEN_AI_API_KEY = os.getenv('OPEN_AI_API_KEY')
+
+
+
+SWAGGER_SETTINGS = {
+    'DEFAULT_API_URL' : os.environ.get('SWAGGER_DEFAULT_API_URL', ""),
+    
+    'USE_SESSION_AUTH': False,
+    'SECURITY_DEFINITIONS': {
+        'Basic': {
+                'type': 'basic'
+        },
+        'Bearer': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header'
+        }
+    },
+    
+}
+

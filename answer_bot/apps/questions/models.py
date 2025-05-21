@@ -3,18 +3,24 @@ from apps.authentication.models import Users
 # Create your models here.
 
 class Questions(models.Model):
-    user              = models.ForeignKey(Users, on_delete=models.SET_NULL, null=True)
-    qid               = models.IntegerField(unique=True,blank=True, null=True)
-    is_correct        = models.BooleanField(default=True)
-    reviewed          = models.BooleanField(default=False)
-    question          = models.TextField(blank=True, null=True)
-    gpt_answer        = models.TextField(blank=True, null=True)
-    new_gpt_answer    = models.TextField(blank=True, null=True)
-    correct_answer    = models.CharField(max_length=10, blank=True, null=True)
-    explanation       = models.TextField(blank=True, null=True)
-    image             = models.ImageField(upload_to='question_images/', blank=True, null=True)
-    response          = models.TextField(blank=True, null=True)
-    created_at        = models.DateTimeField(auto_now_add=True)
+    question                = models.TextField(blank=True, null=True)
+    opa                     = models.TextField(blank=True, null=True)
+    opb                     = models.TextField(blank=True, null=True)
+    opc                     = models.TextField(blank=True, null=True)
+    opd                     = models.TextField(blank=True, null=True)
+    correct_answer          = models.CharField(max_length=1,blank=True, null=True)
+    explanation             = models.TextField(blank=True, null=True)
+    gpt_answer              = models.TextField(blank=True, null=True)
+    gpt_explanation         = models.TextField(blank=True, null=True)
+    improved_question       = models.TextField(blank=True, null=True)
+    improved_opa            = models.TextField(blank=True, null=True)
+    improved_opb            = models.TextField(blank=True, null=True)
+    improved_opc            = models.TextField(blank=True, null=True)
+    improved_opd            = models.TextField(blank=True, null=True)
+    improved_explanation    = models.TextField(blank=True, null=True)
+    is_verified             = models.BooleanField(default=False)
+    created_at              = models.DateTimeField(auto_now_add=True)
+
 
     class Meta:
         verbose_name = "Question"
@@ -34,6 +40,8 @@ class FlaggedQuestion(models.Model):
     resolved          = models.BooleanField(default=False)
     reviewed_by       = models.ForeignKey(Users, on_delete=models.SET_NULL, null=True, blank=True)
     created_at        = models.DateTimeField(auto_now_add=True)
+    original          = models.ForeignKey(Questions, null=True, on_delete=models.SET_NULL)
+    reviewed          = models.BooleanField(default=False)
 
     def __str__(self):
         return str(self.pk)

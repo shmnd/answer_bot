@@ -1,3 +1,5 @@
+import json
+import re
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -20,8 +22,8 @@ class ProcessMCQView(APIView):
     @swagger_auto_schema(request_body=MCQSerializer,tags=["Questions"])
     def post(self, request):
         try:
-            data = request.data
-            serializer = self.serializer_class(data=data, context={'request': request})
+            
+            serializer = self.serializer_class(data = request.data, context={'request': request})
             
             if not serializer.is_valid():
                 self.response_format['status_code'] = status.HTTP_400_BAD_REQUEST
@@ -29,23 +31,20 @@ class ProcessMCQView(APIView):
                 self.response_format["errors"] = serializer.errors
                 return Response(self.response_format, status=status.HTTP_400_BAD_REQUEST)
             
-            if not data:
-                self.response_format['status_code'] = status.HTTP_400_BAD_REQUEST
-                self.response_format["status"] = False
-                self.response_format["errors"] = serializer.errors
-                return Response(self.response_format, status=status.HTTP_400_BAD_REQUEST)
-
             # Step 1: Save original to DB
+            validated = serializer.validated_data
             instance = serializer.save()
 
             # Step 2: Prompt 1 — Get GPT's answer to question
-            question = data['question']
+            # Step 1: Prompt 1 - get GPT answer
+            question = validated.get("question")
             options = {
-                "A": data['opa'],
-                "B": data['opb'],
-                "C": data['opc'],
-                "D": data['opd'],
+                "A": validated.get("opa"),
+                "B": validated.get("opb"),
+                "C": validated.get("opc"),
+                "D": validated.get("opd"),
             }
+
             prompt_1 = f"""You are a medical exam assistant.
 
                 Read the following MCQ and select the correct answer:
@@ -70,7 +69,7 @@ class ProcessMCQView(APIView):
                 gpt_response = response_1.choices[0].message.content.strip()
 
                 # Extract answer letter
-                import re
+                
                 match = re.search(r"(?i)answer[:\-]?\s*([A-D])", gpt_response)
                 gpt_answer_letter = match.group(1).upper() if match else None
 
@@ -78,7 +77,10 @@ class ProcessMCQView(APIView):
                 instance.gpt_explanation = gpt_response
                 instance.save()
 
-                if not gpt_answer_letter or gpt_answer_letter != data['correct_answer'].strip().upper():
+                if not gpt_answer_letter or gpt_answer_letter != validated.get('correct_answer',"").strip().upper():
+                    instance.flag_for_human_review = True
+                    instance.save()
+
                     return Response({
                         "status": "incorrect",
                         "message": "GPT answer does not match provided correct answer. Human verification needed.",
@@ -87,66 +89,112 @@ class ProcessMCQView(APIView):
                     }, status=status.HTTP_200_OK)
 
                 # Step 3: Prompt 2 — Improve question using both inputs
-                prompt_2 = f"""You are a medical educator. Given the following MCQ with original explanation and GPT explanation, rewrite and improve the question and answer.
 
-                    Original:
-                    Question: {question}
-                    A. {options['A']}
-                    B. {options['B']}
-                    C. {options['C']}
-                    D. {options['D']}
-                    Correct Answer: {data['correct_answer']}
-                    Explanation: {data['explanation']}
+                prompt_2_payload = {
+                    "question_text": question,
+                    "image_data": validated.get("image_url") or None,
+                    "options": {
+                        "A": options['A'],
+                        "B": options['B'],
+                        "C": options['C'],
+                        "D": options['D']
+                    },
+                    "system_answer": validated.get("correct_answer"),
+                    "system_explanation": validated.get("explanation"),
+                    "chatgpt_explanation": gpt_response,
+                    "create_newer_version": validated.get("type", 1) # or 0 depending on your UI/API input
+                }
 
-                    GPT Explanation: {gpt_response}
+                prompt_2 = f"""
+                    You are an expert clinical-MCQ editor and validator. I will provide the following fields in JSON:
 
-                    Now return improved content in this format:
+                    {json.dumps(prompt_2_payload, indent=2)}
 
-                    **Improved Question**: <...>
-                    **Improved Options**:
-                    A. ...
-                    B. ...
-                    C. ...
-                    D. ...
-                    **Correct Answer**: <letter>. <option text>
-                    **Improved Explanation**:
-                    - ✅ <why correct is correct>
-                    - ❌ <why others are wrong>
-                    - 🧠 Review Summary"""
+                    Do the following:
+                    1. *Validate*  
+                    - Extract the answer letter from chatgpt_explanation.  
+                    - If it does *not* match system_answer, output exactly:
+                        json
+                        {{ "flag_for_human_review": true }}
+
+                    - Otherwise continue to step 2.
+
+                    2. *Question & Options*  
+                    - If create_newer_version == 1:  
+                        • Rewrite the stem for clarity and precision; expand all acronyms; fix grammar; avoid any potential copyright overlap.  
+                        • Rewrite each option (A–D) to remove duplicates, correct spelling/grammar, and keep clinical accuracy.  
+                    - If create_newer_version == 0:  
+                        • Keep the stem and options as close to the original as possible, but correct any typos, expand acronyms, and polish grammar.
+
+                    3. *Explanation*  
+                    - Merge system_explanation and chatgpt_explanation, selecting the best content from each into one structured explanation object:  
+                        json
+                        {{
+                        "overview": "...",
+                        "correct_option": "...",
+                        "others": {{ "A": "...", "B": "...", "D": "..." }}
+                        }}
+
+                    4. *Output*  
+                    - Return a single JSON object. If validated, the object must contain:
+                        json
+                        {{
+                        "improved_question": "...",
+                        "improved_options": {{
+                            "A": "...",
+                            "B": "...",
+                            "C": "...",
+                            "D": "..."
+                        }},
+                        "correct_answer": "C",
+                        "improved_explanation": {{
+                            "overview": "...",
+                            "correct_option": "...",
+                            "others": {{ "A": "...", "B": "...", "D": "..." }}
+                        }}
+                        }}
+                    - If flagged, only output {{ "flag_for_human_review": true }} and no other keys.
+                    """
 
                 response_2 = client.chat.completions.create(
                     model="gpt-4",
                     messages=[
-                        {"role": "system", "content": "Improve and rewrite the MCQ using both explanations."},
+                        {"role": "system", "content": "Strictly follow the MCQ editor behavior and output JSON only."},
                         {"role": "user", "content": prompt_2}
                     ]
                 )
+                
                 improved_output = response_2.choices[0].message.content.strip()
 
-                question_match = re.search(r"\*\*Improved Question\*\*:\s*(.+)", improved_output)
-                instance.improved_question = question_match.group(1).strip() if question_match else None
+                try:
+                    improved_data = json.loads(improved_output)
+                except json.JSONDecodeError:
+                    self.response_format['status_code'] = status.HTTP_422_UNPROCESSABLE_ENTITY
+                    self.response_format['status'] = False
+                    self.response_format['message'] = "GPT response was not valid JSON"
+                    return Response(self.response_format, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
-                # Extract improved options A–D
-                for option_key in ['A', 'B', 'C', 'D']:
-                    pattern = rf"{option_key}\.\s*(.+)"
-                    match = re.search(pattern, improved_output)
-                    if match:
-                        setattr(instance, f"improved_op{option_key.lower()}", match.group(1).strip())
+                # Step 2: Check if it was flagged
+                if improved_data.get("flag_for_human_review") is True:
+                    instance.flag_for_human_review = True
+                    instance.save()
+                    self.response_format['status'] = True
+                    self.response_format['message'] = "Flagged for human review"
+                    self.response_format['data'] = {"qid": instance.qid}
+                    return Response(self.response_format, status=status.HTTP_200_OK)
 
-                # Optionally: extract correct answer again
-                correct_match = re.search(r"\*\*Correct Answer\*\*:\s*([A-D])\.\s*(.+)", improved_output)
+                # Step 3: Save improved values
+                instance.improved_question = improved_data.get("improved_question")
+                options = improved_data.get("improved_options", {})
+                instance.improved_opa = options.get("A")
+                instance.improved_opb = options.get("B")
+                instance.improved_opc = options.get("C")
+                instance.improved_opd = options.get("D")
+                instance.correct_answer = improved_data.get("correct_answer")
 
-                if correct_match:
-                    instance.correct_answer = correct_match.group(1).strip()
-
-                instance.improved_explanation = improved_output
+                instance.improved_explanation = json.dumps(improved_data.get("improved_explanation", {}), indent=2)
                 instance.is_verified = True
                 instance.save()
-
-                # return Response({
-                #     "status": "success",
-                #     "improved": improved_output
-                # }, status=status.HTTP_200_OK)
 
                 self.response_format['status_code'] = status.HTTP_201_CREATED
                 self.response_format["message"] = "success"

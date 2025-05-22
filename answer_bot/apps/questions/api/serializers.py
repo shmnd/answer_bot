@@ -3,38 +3,40 @@ from rest_framework import serializers
 from apps.questions.models import ImprovedResponse
 
 class MCQSerializer(serializers.ModelSerializer):
-    question = serializers.CharField(required=True)
-    opa = serializers.CharField(required=True)
-    opb = serializers.CharField(required=True)
-    opc = serializers.CharField(required=True)
-    opd = serializers.CharField(required=True)
-    correct_answer = serializers.CharField(required=True)
-    explanation = serializers.CharField(required=True)
+    qid         = serializers.IntegerField(required=True)
+    question    = serializers.CharField(required=True)
+    op1         = serializers.CharField(required=True, source='opa')
+    op2         = serializers.CharField(required=True, source='opb')
+    op3         = serializers.CharField(required=True, source='opc')
+    op4         = serializers.CharField(required=True, source='opd')
+    cop         = serializers.CharField(required=True, source='correct_answer')
+    exmp        = serializers.CharField(required=True, source='explanation')
+    type        = serializers.IntegerField(required=True)
+
+    new_question    = serializers.CharField(read_only=True, source='improved_question')
+    new_op1         = serializers.CharField(read_only=True, source='improved_opa')
+    new_op2         = serializers.CharField(read_only=True, source='improved_opb')
+    new_op3         = serializers.CharField(read_only=True, source='improved_opc')
+    new_op4         = serializers.CharField(read_only=True, source='improved_opd')
+    new_cop         = serializers.CharField(read_only=True, source='correct_answer')
+    new_expm        = serializers.CharField(read_only=True, source='improved_explanation')
 
     class Meta:
         model = ImprovedResponse
         fields = [
-                'question','opa','opb','opc','opd','correct_answer',
-                'explanation','gpt_answer', 'gpt_explanation',
-                'improved_question', 'improved_opa', 'improved_opb',
-                'improved_opc', 'improved_opd', 'improved_explanation'
-            ]
-
-        read_only_fields = [
-            'gpt_answer', 'gpt_explanation',
-            'improved_question', 'improved_opa', 'improved_opb',
-            'improved_opc', 'improved_opd', 'improved_explanation'
+            'qid','question','op1','op2','op3','op4',
+            'cop','exmp','type','new_cop',
+            'gpt_explanation','new_question', 'new_op1',
+            'new_op2','new_op3', 'new_op4',
+            'new_expm','flag_for_human_review'
         ]
 
-        extra_kwargs = {
-            'question': {'required': True},
-            'opa': {'required': True},
-            'opb': {'required': True},
-            'opc': {'required': True},
-            'opd': {'required': True},
-            'correct_answer': {'required': True},
-            'explanation': {'required': True},
-        }
+        read_only_fields = [
+            'new_cop', 'gpt_explanation',
+            'new_question', 'new_op1', 'new_op2',
+            'new_op3', 'new_op4', 'new_expm',
+            'flag_for_human_review','type'
+        ]
 
     def create(self, validated_data):
         return ImprovedResponse.objects.create(**validated_data)

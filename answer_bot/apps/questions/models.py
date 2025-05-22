@@ -3,6 +3,7 @@ from apps.authentication.models import Users
 # Create your models here.
 
 class ImprovedResponse(models.Model):
+    qid                     = models.IntegerField(blank=True, null=True)
     question                = models.TextField(blank=True, null=True)
     opa                     = models.TextField(blank=True, null=True)
     opb                     = models.TextField(blank=True, null=True)
@@ -20,6 +21,9 @@ class ImprovedResponse(models.Model):
     improved_explanation    = models.TextField(blank=True, null=True)
     is_verified             = models.BooleanField(default=False)
     created_at              = models.DateTimeField(auto_now_add=True)
+    last_reviewed           = models.DateTimeField(auto_now_add=True)
+    type                    = models.IntegerField(blank=True, null=True)
+    flag_for_human_review   = models.BooleanField(default=False)
 
 
     class Meta:

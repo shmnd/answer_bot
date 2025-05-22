@@ -1,0 +1,51 @@
+
+
+// Mobile first Media Query
+
+@mixin mq($point) {
+  @if $point == extraLarge {
+     @media (min-width: 1499px) { @content ; }
+  }
+  @if $point == large {
+     @media (min-width: 1200px) { @content ; }
+  }
+  @if $point == medium {
+     @media (min-width: 992px) { @content ; }
+  }
+  @if $point == small {
+     @media (min-width: 767px) { @content ; }
+  }
+  @if $point == tiny {
+     @media (min-width: 361px) { @content ; }
+  }
+}
+
+
+// Web First Media Query
+
+@mixin mqMx($point) {
+   @if $point == ultraLarge {
+      @media (max-width: 1699px) { @content ; }
+   }
+  @if $point == extraLarge {
+     @media (max-width: 1499px) { @content ; }
+  }
+   @if $point == large {
+     @media (max-width: 1199px) { @content ; }
+  }
+    @else if $point == medium {
+     @media (max-width: 991px) { @content ; }
+  }
+   @else if $point == small {
+     @media (max-width: 768px)  { @content ; }
+  }
+  @else if $point == largemobile {
+     @media (max-width: 575px)  { @content ; }
+  }
+  @else if $point == mobile {
+     @media (max-width: 480px)  { @content ; }
+  }
+  @else if $point == tiny {
+     @media (max-width: 400px)  { @content ; }
+  }
+}

@@ -1,0 +1,13 @@
+
+
+.row{
+	display: flex;
+	flex-wrap: wrap;
+	margin: 0 -15px;
+}
+.column{
+	flex-grow: 1;
+	flex-shrink: 1;
+	flex-basis: 0;
+	padding: 0 15px;
+}

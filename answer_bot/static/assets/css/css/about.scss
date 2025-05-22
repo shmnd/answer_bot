@@ -1,0 +1,131 @@
+
+@import 'partials/header';
+@import 'partials/footer';
+
+// ---------------------------------------------------------------------------------------------------------------------
+//Count starts
+.dashboard {
+    $color_2: rgba(120, 120, 120, 1);
+    $background-color_1: rgba(0, 0, 0, 0);
+.count{
+    box-shadow: 0px 0px 20px 0px rgb(165 160 160 / 16%);
+    padding: 15px 20px;
+    height: 130px;
+    p{
+        line-height: 20px;
+        padding-top: 5px;
+    }
+}
+    #prg-counter {
+        padding: 40px 0px;
+
+        .prg-container {
+          
+            width: 100%;
+            margin: auto;
+
+            button {
+               
+                background-color: rgba(0, 0, 0, 0);
+                color: $primaryColor;
+                font-size: 2.5em;
+                font-weight: 700;
+                border:none;
+            }
+        }
+
+        button.prg-countplus {
+            &::after {
+                content: " +";
+                display: inline-block;
+            }
+        }
+
+        button.prg-countk {
+            &::after {
+                content: " K";
+                display: inline-block;
+            }
+        }
+
+        button.prg-count-percent {
+            &::after {
+                content: "%";
+                display: inline-block;
+            }
+        }
+
+        h4.prg-count-title {
+            color: $blackColor;
+            font-size: 14px;
+            padding-top: 10px;
+            line-height: 21px;
+        }
+    }
+
+    #prg-head {
+        h1 {
+            text-align: center;
+        }
+    }
+}
+@media (min-width: 1200px){
+.grid-5 {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+}
+}
+@media (min-width:991px) and (max-width:1199px) {
+    .grid-5 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+    }
+}
+@media (min-width:566px) and (max-width:990px) {
+    .grid-5 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+  
+}
+@media (max-width: 575px){
+    .grid-5 {
+        display: grid;
+        grid-template-columns: repeat(1, 1fr);
+        gap: 10px;
+    }
+   
+}
+
+// ..................................................... 
+
+// about content starts
+.section2{
+    .img-wrapper{
+        img{
+            width: 100%;
+        }
+    }
+}
+@media (min-width: 1200px){
+    .section2{
+        .img-wrapper{
+            img{
+                width:90%;
+            }
+        }
+    }   
+}
+@media (max-width:991px){
+    .content-wrapper{
+        padding: 20px;
+    }
+    .img-wrapper{
+        height: 300px;
+        overflow: hidden;
+        padding-top: 10px;
+        margin-bottom: 15px;
+    }
+}

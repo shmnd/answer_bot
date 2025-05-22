@@ -1,0 +1,237 @@
+@import 'variables';
+@import url('https://fonts.cdnfonts.com/css/aileron');
+
+
+.header {
+    position: fixed;
+    width: 100%;
+    top: 0;
+    box-shadow: 0 0 4px rgb(0 0 0 / 20%);
+    z-index: 99999;
+    background-color: #fff;
+
+    .header-top {
+        .dropdown{
+            display: flex;
+                justify-content: flex-end;
+                padding-top: 10px; 
+               position: relative;
+            select{
+                border-radius: 50px;
+                padding: 3px 0px;
+                color: #D22730;
+                font-size: 12px;
+                border: none;
+                    background: #F4F4F4;
+                    &:focus{
+                        box-shadow: none !important;
+                    }     
+            }
+            &::before{
+                position: absolute;
+                content: url(/static/assets/media/images/language.png);
+                right: 82px;
+                top: 50%;
+                height: 10px;
+                margin-top: -3px;
+                width: 10px;
+                }
+             span{
+                    background: #F4F4F4;
+                    padding: 0px 9px 0px 32px;
+                    border-radius: 20px;
+             }
+        }
+               .icn {
+           color: #7f8185;
+            margin-top: -4px;
+        }
+
+
+
+
+
+
+
+        $color_1: #fff;
+        $color_2: #c0392b;
+        $background-color_1: #c0392b;
+        $background-color_2: #b83729;
+        $background-color_3: #ab3326;
+        $border-color_1: #fff transparent transparent transparent;
+        $border-color_2: transparent transparent #fff transparent;
+        
+        .select-hidden {
+            display: none;
+            visibility: hidden;
+            padding-right: 10px;
+        }
+    
+        .select-styled {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            background-color: $background-color_1;
+            padding: 8px 15px;
+            -moz-transition: all 0.2s ease-in;
+            -o-transition: all 0.2s ease-in;
+            -webkit-transition: all 0.2s ease-in;
+            transition: all 0.2s ease-in;
+            &:after {
+                content: "";
+                width: 0;
+                height: 0;
+                border: 7px solid transparent;
+                border-color: $border-color_1;
+                position: absolute;
+                top: 16px;
+                right: 10px;
+            }
+            &:hover {
+                background-color: $background-color_2;
+            }
+            &:active {
+                background-color: $background-color_3;
+                &:after {
+                    top: 9px;
+                    border-color: $border-color_2;
+                }
+            }
+        }
+        .select-styled.active {
+            background-color: $background-color_3;
+            &:after {
+                top: 9px;
+                border-color: $border-color_2;
+            }
+        }
+        .select-options {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            left: 0;
+            z-index: 999;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            background-color: $background-color_3;
+            li {
+                margin: 0;
+                padding: 12px 0;
+                text-indent: 15px;
+                border-top: 1px solid #962d22;
+                -moz-transition: all 0.15s ease-in;
+                -o-transition: all 0.15s ease-in;
+                -webkit-transition: all 0.15s ease-in;
+                transition: all 0.15s ease-in;
+                &:hover {
+                    color: $color_2;
+                    background: grey;
+                }
+            }
+            li.is-selected {
+                color: $color_2;
+                background: grey;
+            }
+            li[rel="hide"] {
+                display: none;
+            }
+        }
+    }
+
+    // --------------------------------------------
+    .main-header {
+        .navbar-nav {
+            .nav-item{padding: 5px 10px !important;}
+            .nav-link {
+                color:#59677D;
+                padding: 0px 10px;
+                position: relative;
+                font-family: 'Aileron', sans-serif;
+                font-size: 13px;
+
+                &.active {
+                    color: $primaryColor;
+                    position: relative;
+                    background: #fdf2f3;
+                    border-radius: 20px;
+
+                }
+
+            }
+        }
+        .navbar-brand {
+            img {
+                 margin-top: -5px;
+                 width: 120px;
+            }
+        }
+    }
+}
+
+.navbar {
+    .navbar-toggler:focus {
+        box-shadow: none !important;
+    }
+}
+
+.btm {
+    margin-top: 94px;
+}
+
+
+// -----------------------common banner-----------------
+.banner-section {
+    background-image: url("/static/assets/media/images/banner-bg.png");
+    width: 100%;
+    height: 209px;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+    display: flex;
+    align-items: center;
+.d-flex{
+    justify-content: center;
+}
+    .banner-title {
+        img {
+            opacity: .5;
+        }
+
+        h2 {
+          
+            font-size: 26px;
+            color: $blackColor;
+            font-weight: 700;   
+        }
+    }
+}
+
+// --------------------------------------------------------------------------- 
+
+@media (max-width: 991px) {
+    .header .main-header .navbar-nav {
+        .nav-link {
+            padding: 9px;
+            border-bottom: 1px solid #f1f1f1;
+        }
+    }
+
+    .navbar-nav {
+        background-color: $lightbg;
+    }
+
+
+    .navbar-toggler-icon {
+        margin-right: 10px;
+
+        svg {
+
+            color: $primaryColor !important;
+        }
+    }
+}
+

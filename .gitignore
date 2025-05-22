@@ -30,7 +30,7 @@ debug.log
 /media/assets
 /.vscode
 admin_generator.txt
-static/
+# static/
 
 # Ignore all migration files except __init__.py
 **/migrations/*.py

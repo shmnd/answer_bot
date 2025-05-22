@@ -166,9 +166,14 @@ class ProcessMCQView(APIView):
                         {"role": "user", "content": prompt_2}
                     ]
                 )
-                
+
                 improved_output = response_2.choices[0].message.content.strip()
-                
+
+                # Strip code block if GPT returns markdown style
+                if improved_output.startswith("```json"):
+                    improved_output = re.sub(r"^```json|```$", "", improved_output.strip(), flags=re.IGNORECASE).strip()
+                elif improved_output.startswith("```"):
+                    improved_output = re.sub(r"^```|```$", "", improved_output.strip()).strip()
 
                 try:
                     improved_data = json.loads(improved_output)
@@ -177,17 +182,23 @@ class ProcessMCQView(APIView):
                     self.response_format['status'] = False
                     self.response_format['message'] = "GPT response was not valid JSON"
                     return Response(self.response_format, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+                
+                print(improved_output,'outppppppppppp')
 
+                update_type = validated.get("type", 1)
 
-                # Step 3: Save improved values
-                instance.improved_question = improved_data.get("improved_question")
-                options = improved_data.get("improved_options", {})
-                instance.improved_opa = options.get("A")
-                instance.improved_opb = options.get("B")
-                instance.improved_opc = options.get("C")
-                instance.improved_opd = options.get("D")
-                instance.correct_answer = improved_data.get("correct_answer")
+                if update_type == 1:
 
+                    # Step 3: Save improved values
+                    instance.improved_question = improved_data.get("improved_question")
+                    options = improved_data.get("improved_options", {})
+                    instance.improved_opa = options.get("A")
+                    instance.improved_opb = options.get("B")
+                    instance.improved_opc = options.get("C")
+                    instance.improved_opd = options.get("D")
+                    instance.correct_answer = improved_data.get("correct_answer")
+                    
+                # Always update explanation regardless of type
                 instance.improved_explanation = json.dumps(improved_data.get("improved_explanation", {}), indent=2)
                 instance.is_verified = True
                 instance.save()

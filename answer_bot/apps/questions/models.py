@@ -3,7 +3,7 @@ from apps.authentication.models import Users
 # Create your models here.
 
 class ImprovedResponse(models.Model):
-    qid                     = models.IntegerField(blank=True, null=True)
+    qid                     = models.IntegerField(unique=True,blank=True, null=True)
     question                = models.TextField(blank=True, null=True)
     opa                     = models.TextField(blank=True, null=True)
     opb                     = models.TextField(blank=True, null=True)

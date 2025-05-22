@@ -81,13 +81,16 @@ class ProcessMCQView(APIView):
                     instance.flag_for_human_review = True
                     instance.save()
 
-                    return Response({
-                        "status": "incorrect",
-                        "message": "GPT answer does not match provided correct answer. Human verification needed.",
-                        "gpt_answer": gpt_answer_letter,
-                        "gpt_explanation": gpt_response
-                    }, status=status.HTTP_200_OK)
-
+                    self.response_format['status'] = True
+                    self.response_format['message'] = "Flagged for human review"
+                    self.response_format["data"] = {
+                        "qid": instance.qid,
+                        "type": instance.type,
+                        "flag_for_human_review": instance.flag_for_human_review
+                    }
+                    return Response(self.response_format, status=status.HTTP_200_OK)
+                
+                
                 # Step 3: Prompt 2 — Improve question using both inputs
 
                 prompt_2_payload = {
@@ -165,6 +168,7 @@ class ProcessMCQView(APIView):
                 )
                 
                 improved_output = response_2.choices[0].message.content.strip()
+                
 
                 try:
                     improved_data = json.loads(improved_output)
@@ -174,14 +178,6 @@ class ProcessMCQView(APIView):
                     self.response_format['message'] = "GPT response was not valid JSON"
                     return Response(self.response_format, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
-                # Step 2: Check if it was flagged
-                if improved_data.get("flag_for_human_review") is True:
-                    instance.flag_for_human_review = True
-                    instance.save()
-                    self.response_format['status'] = True
-                    self.response_format['message'] = "Flagged for human review"
-                    self.response_format['data'] = {"qid": instance.qid}
-                    return Response(self.response_format, status=status.HTTP_200_OK)
 
                 # Step 3: Save improved values
                 instance.improved_question = improved_data.get("improved_question")
@@ -199,7 +195,18 @@ class ProcessMCQView(APIView):
                 self.response_format['status_code'] = status.HTTP_201_CREATED
                 self.response_format["message"] = "success"
                 self.response_format["status"] = True
-                self.response_format["data"] = improved_output
+                self.response_format["data"] = {
+                    "qid": instance.qid,
+                    "type": instance.type,
+                    "new_question": instance.improved_question,
+                    "new_op1": instance.improved_opa,
+                    "new_op2": instance.improved_opb,
+                    "new_op3": instance.improved_opc,
+                    "new_op4": instance.improved_opd,
+                    "new_cop": instance.correct_answer,
+                    "new_exmp": json.loads(instance.improved_explanation) if instance.improved_explanation else {},
+                    "flag_for_human_review": instance.flag_for_human_review
+                }
                 return Response(self.response_format, status=status.HTTP_201_CREATED)
 
             except Exception as e:

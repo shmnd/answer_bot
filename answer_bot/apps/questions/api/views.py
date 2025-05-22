@@ -45,18 +45,33 @@ class ProcessMCQView(APIView):
                 "D": validated.get("opd"),
             }
 
-            prompt_1 = f"""You are a medical exam assistant.
+            prompt_1_payload = {
+                "question_text": question,
+                "options": {
+                    "A": options["A"],
+                    "B": options["B"],
+                    "C": options["C"],
+                    "D": options["D"]
+                }
+            }
 
-                Read the following MCQ and select the correct answer:
+            prompt_1 = f"""
+                You are a clinical MCQ assistant.
 
-                Question: {question}
+                I will provide an MCQ in JSON format. You must identify the correct answer (A–D) and provide a concise, medically accurate explanation.
 
-                A. {options['A']}
-                B. {options['B']}
-                C. {options['C']}
-                D. {options['D']}
+                Here is the MCQ:
 
-                Just give your answer in the format: 'Answer: <letter>' followed by an explanation."""
+                {json.dumps(prompt_1_payload, indent=2)}
+
+                Instructions:
+                - First, analyze the question and all options.
+                - Then respond in this format:
+
+                Answer: <A/B/C/D>
+
+                Explanation: <your reasoning>
+                """
 
             try:
                 response_1 = client.chat.completions.create(

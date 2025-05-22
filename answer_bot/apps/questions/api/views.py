@@ -183,8 +183,6 @@ class ProcessMCQView(APIView):
                     self.response_format['message'] = "GPT response was not valid JSON"
                     return Response(self.response_format, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
                 
-                print(improved_output,'outppppppppppp')
-
                 update_type = validated.get("type", 1)
 
                 if update_type == 1:
@@ -197,7 +195,7 @@ class ProcessMCQView(APIView):
                     instance.improved_opc = options.get("C")
                     instance.improved_opd = options.get("D")
                     instance.correct_answer = improved_data.get("correct_answer")
-                    
+
                 # Always update explanation regardless of type
                 instance.improved_explanation = json.dumps(improved_data.get("improved_explanation", {}), indent=2)
                 instance.is_verified = True

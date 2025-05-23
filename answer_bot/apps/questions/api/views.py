@@ -72,115 +72,114 @@ class ProcessMCQView(APIView):
                 Explanation: <your reasoning>
                 """
 
-            try:
-                response_1 = client.chat.completions.create(
-                    model="gpt-4",
-                    messages=[
-                        {"role": "system", "content": "Answer the medical MCQ with reasoning."},
-                        {"role": "user", "content": prompt_1}
-                    ]
-                )
-                gpt_response = response_1.choices[0].message.content.strip()
+            response_1 = client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "Answer the medical MCQ with reasoning."},
+                    {"role": "user", "content": prompt_1}
+                ]
+            )
+            gpt_response = response_1.choices[0].message.content.strip()
 
-                # Extract answer letter
-                
-                match = re.search(r"(?i)answer[:\-]?\s*([A-D])", gpt_response)
-                gpt_answer_letter = match.group(1).upper() if match else None
+            # Extract answer letter
+            
+            match = re.search(r"(?i)answer[:\-]?\s*([A-D])", gpt_response)
+            gpt_answer_letter = match.group(1).upper() if match else None
 
-                instance.gpt_answer = gpt_answer_letter
-                instance.gpt_explanation = gpt_response
+            instance.gpt_answer = gpt_answer_letter
+            instance.gpt_explanation = gpt_response
+            instance.save()
+
+            if not gpt_answer_letter or gpt_answer_letter != validated.get('correct_answer',"").strip().upper():
+                instance.flag_for_human_review = True
                 instance.save()
 
-                if not gpt_answer_letter or gpt_answer_letter != validated.get('correct_answer',"").strip().upper():
-                    instance.flag_for_human_review = True
-                    instance.save()
-
-                    self.response_format['status'] = True
-                    self.response_format['message'] = "Flagged for human review"
-                    self.response_format["data"] = {
-                        "qid": instance.qid,
-                        "type": instance.type,
-                        "flag_for_human_review": instance.flag_for_human_review
-                    }
-                    return Response(self.response_format, status=status.HTTP_200_OK)
-                
-                
-                # Step 3: Prompt 2 — Improve question using both inputs
-
-                prompt_2_payload = {
-                    "question_text": question,
-                    "image_data": validated.get("image_url") or None,
-                    "options": {
-                        "A": options['A'],
-                        "B": options['B'],
-                        "C": options['C'],
-                        "D": options['D']
-                    },
-                    "system_answer": validated.get("correct_answer"),
-                    "system_explanation": validated.get("explanation"),
-                    "chatgpt_explanation": gpt_response,
-                    "create_newer_version": validated.get("type", 1) # or 0 depending on your UI/API input
+                self.response_format['status'] = True
+                self.response_format['message'] = "Flagged for human review"
+                self.response_format["data"] = {
+                    "qid": instance.qid,
+                    "type": instance.type,
+                    "flag_for_human_review": instance.flag_for_human_review
                 }
+                return Response(self.response_format, status=status.HTTP_200_OK)
+            
+            # Step 3: Prompt 2 — Improve question using both inputs
 
-                prompt_2 = f"""
-                    You are an expert clinical-MCQ editor and validator. I will provide the following fields in JSON:
+            prompt_2_payload = {
+                "question_text": question,
+                "image_data": validated.get("image_url") or None,
+                "options": {
+                    "A": options['A'],
+                    "B": options['B'],
+                    "C": options['C'],
+                    "D": options['D']
+                },
+                "system_answer": validated.get("correct_answer"),
+                "system_explanation": validated.get("explanation"),
+                "chatgpt_explanation": gpt_response,
+                "create_newer_version": validated.get("type", 1) # or 0 depending on your UI/API input
+            }
 
-                    {json.dumps(prompt_2_payload, indent=2)}
+            prompt_2 = f"""
+                You are an expert clinical-MCQ editor and validator. I will provide the following fields in JSON:
 
-                    Do the following:
-                    1. *Validate*  
-                    - Extract the answer letter from chatgpt_explanation.  
-                    - If it does *not* match system_answer, output exactly:
-                        json
-                        {{ "flag_for_human_review": true }}
+                {json.dumps(prompt_2_payload, indent=2)}
 
-                    - Otherwise continue to step 2.
+                Do the following:
+                1. *Validate*  
+                - Extract the answer letter from chatgpt_explanation.  
+                - If it does *not* match system_answer, output exactly:
+                    json
+                    {{ "flag_for_human_review": true }}
 
-                    2. *Question & Options*  
-                    - If create_newer_version == 1:  
-                        • Rewrite the stem for clarity and precision; expand all acronyms; fix grammar; avoid any potential copyright overlap.  
-                        • Rewrite each option (A–D) to remove duplicates, correct spelling/grammar, and keep clinical accuracy.  
-                    - If create_newer_version == 0:  
-                        • Keep the stem and options as close to the original as possible, but correct any typos, expand acronyms, and polish grammar.
+                - Otherwise continue to step 2.
 
-                    3. *Explanation*  
-                    - Merge system_explanation and chatgpt_explanation, selecting the best content from each into one structured explanation object:  
-                        json
-                        {{
+                2. *Question & Options*  
+                - If create_newer_version == 1:  
+                    • Rewrite the stem for clarity and precision; expand all acronyms; fix grammar; avoid any potential copyright overlap.  
+                    • Rewrite each option (A–D) to remove duplicates, correct spelling/grammar, and keep clinical accuracy.  
+                - If create_newer_version == 0:  
+                    • Keep the stem and options as close to the original as possible, but correct any typos, expand acronyms, and polish grammar.
+
+                3. *Explanation*  
+                - Merge system_explanation and chatgpt_explanation, selecting the best content from each into one structured explanation object:  
+                    json
+                    {{
+                    "overview": "...",
+                    "correct_option": "...",
+                    "others": {{ "A": "...", "B": "...", "D": "..." }}
+                    }}
+
+                4. *Output*  
+                - Return a single JSON object. If validated, the object must contain:
+                    json
+                    {{
+                    "improved_question": "...",
+                    "improved_options": {{
+                        "A": "...",
+                        "B": "...",
+                        "C": "...",
+                        "D": "..."
+                    }},
+                    "correct_answer": "C",
+                    "improved_explanation": {{
                         "overview": "...",
                         "correct_option": "...",
                         "others": {{ "A": "...", "B": "...", "D": "..." }}
-                        }}
+                    }}
+                    }}
+                - If flagged, only output {{ "flag_for_human_review": true }} and no other keys.
+                """
 
-                    4. *Output*  
-                    - Return a single JSON object. If validated, the object must contain:
-                        json
-                        {{
-                        "improved_question": "...",
-                        "improved_options": {{
-                            "A": "...",
-                            "B": "...",
-                            "C": "...",
-                            "D": "..."
-                        }},
-                        "correct_answer": "C",
-                        "improved_explanation": {{
-                            "overview": "...",
-                            "correct_option": "...",
-                            "others": {{ "A": "...", "B": "...", "D": "..." }}
-                        }}
-                        }}
-                    - If flagged, only output {{ "flag_for_human_review": true }} and no other keys.
-                    """
+            response_2 = client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "Strictly follow the MCQ editor behavior and output JSON only."},
+                    {"role": "user", "content": prompt_2}
+                ]
+            )
 
-                response_2 = client.chat.completions.create(
-                    model="gpt-4",
-                    messages=[
-                        {"role": "system", "content": "Strictly follow the MCQ editor behavior and output JSON only."},
-                        {"role": "user", "content": prompt_2}
-                    ]
-                )
-
+            try:
                 improved_output = response_2.choices[0].message.content.strip()
 
                 # Strip code block if GPT returns markdown style
@@ -189,14 +188,8 @@ class ProcessMCQView(APIView):
                 elif improved_output.startswith("```"):
                     improved_output = re.sub(r"^```|```$", "", improved_output.strip()).strip()
 
-                try:
-                    improved_data = json.loads(improved_output)
-                except json.JSONDecodeError:
-                    self.response_format['status_code'] = status.HTTP_422_UNPROCESSABLE_ENTITY
-                    self.response_format['status'] = False
-                    self.response_format['message'] = "GPT response was not valid JSON"
-                    return Response(self.response_format, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
-                
+                improved_data = json.loads(improved_output)
+
                 update_type = validated.get("type", 1)
 
                 if update_type == 1:
@@ -209,19 +202,15 @@ class ProcessMCQView(APIView):
                     instance.improved_opc = options.get("C")
                     instance.improved_opd = options.get("D")
                     instance.correct_answer = improved_data.get("correct_answer")
-                    # Always update explanation regardless of type
-                    instance.improved_explanation = json.dumps(improved_data.get("improved_explanation", {}), indent=2)
-                    instance.is_verified = True
-                    instance.save()
                 else:
                     # Only return original data in the response, don't update question/options
                     instance.improved_question = validated.get('question')
-                    instance.improved_opa = validated.get("opa"),
-                    instance.improved_opb = validated.get("opb"),
-                    instance.improved_opc = validated.get("opc"),
-                    instance.improved_opd = validated.get("opd"),
+                    instance.improved_opa = validated.get("opa")
+                    instance.improved_opb = validated.get("opb")
+                    instance.improved_opc = validated.get("opc")
+                    instance.improved_opd = validated.get("opd")
                     instance.correct_answer = validated.get("correct_answer")
-                    
+
                 # Always update explanation regardless of type
                 instance.improved_explanation = json.dumps(improved_data.get("improved_explanation", {}), indent=2)
                 instance.is_verified = True
@@ -245,10 +234,10 @@ class ProcessMCQView(APIView):
                 return Response(self.response_format, status=status.HTTP_201_CREATED)
 
             except Exception as e:
-                self.response_format['status_code'] = status.HTTP_500_INTERNAL_SERVER_ERROR
+                self.response_format['status_code'] = status.HTTP_422_UNPROCESSABLE_ENTITY
                 self.response_format['status'] = False
-                self.response_format['message'] = str(e)
-                return Response(self.response_format, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                self.response_format['message'] = "GPT response was not valid JSON"
+                return Response(self.response_format, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
             
         except Exception as e:
             self.response_format['status_code'] = status.HTTP_500_INTERNAL_SERVER_ERROR

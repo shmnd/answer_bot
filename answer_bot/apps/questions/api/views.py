@@ -35,7 +35,6 @@ class ProcessMCQView(APIView):
             validated = serializer.validated_data
             instance = serializer.save()
 
-            # Step 2: Prompt 1 — Get GPT's answer to question
             # Step 1: Prompt 1 - get GPT answer
             question = validated.get("question")
             options = {
@@ -210,7 +209,19 @@ class ProcessMCQView(APIView):
                     instance.improved_opc = options.get("C")
                     instance.improved_opd = options.get("D")
                     instance.correct_answer = improved_data.get("correct_answer")
-
+                    # Always update explanation regardless of type
+                    instance.improved_explanation = json.dumps(improved_data.get("improved_explanation", {}), indent=2)
+                    instance.is_verified = True
+                    instance.save()
+                else:
+                    # Only return original data in the response, don't update question/options
+                    instance.improved_question = validated.get('question')
+                    instance.improved_opa = validated.get("opa"),
+                    instance.improved_opb = validated.get("opb"),
+                    instance.improved_opc = validated.get("opc"),
+                    instance.improved_opd = validated.get("opd"),
+                    instance.correct_answer = validated.get("correct_answer")
+                    
                 # Always update explanation regardless of type
                 instance.improved_explanation = json.dumps(improved_data.get("improved_explanation", {}), indent=2)
                 instance.is_verified = True

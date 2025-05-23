@@ -228,7 +228,7 @@ class ProcessMCQView(APIView):
                     "new_op3": instance.improved_opc,
                     "new_op4": instance.improved_opd,
                     "new_cop": instance.correct_answer,
-                    "new_exmp": json.loads(instance.improved_explanation) if instance.improved_explanation else {},
+                    "new_expm": json.loads(instance.improved_explanation) if instance.improved_explanation else {},
                     "flag_for_human_review": instance.flag_for_human_review
                 }
                 return Response(self.response_format, status=status.HTTP_201_CREATED)

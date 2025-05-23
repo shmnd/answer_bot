@@ -10,7 +10,7 @@ class MCQSerializer(serializers.ModelSerializer):
     op3         = serializers.CharField(required=True, source='opc')
     op4         = serializers.CharField(required=True, source='opd')
     cop         = serializers.CharField(required=True, source='correct_answer')
-    exmp        = serializers.CharField(required=True, source='explanation')
+    expm        = serializers.CharField(required=True, source='explanation')
     type        = serializers.IntegerField(required=True)
 
     new_question    = serializers.CharField(read_only=True, source='improved_question')
@@ -25,7 +25,7 @@ class MCQSerializer(serializers.ModelSerializer):
         model = ImprovedResponse
         fields = [
             'qid','question','op1','op2','op3','op4',
-            'cop','exmp','type','new_cop',
+            'cop','expm','type','new_cop',
             'gpt_explanation','new_question', 'new_op1',
             'new_op2','new_op3', 'new_op4',
             'new_expm','flag_for_human_review'

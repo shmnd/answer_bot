@@ -7,9 +7,9 @@ from django.shortcuts import render,redirect,get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.mixins import LoginRequiredMixin
-from apps.questions.models import FlaggedQuestion,Prompt
+from apps.questions.models import FlaggedQuestion,Prompt,ImprovedResponse
 from apps.convertor.models import Questions
-
+from django.core.paginator import Paginator
 
 
 client = OpenAI(api_key=settings.OPEN_AI_API_KEY) 
@@ -260,7 +260,6 @@ def prompt_list_create_view(request):
 def delete_prompt(request, pk):
     prompt_obj = get_object_or_404(Prompt, pk=pk)
     prompt_obj.delete()
-    
     prompts = Prompt.objects.all()
     return render(request, "questions/prompt.html", {"prompts": prompts})
 
@@ -279,3 +278,14 @@ def update_prompt(request, pk):
     return JsonResponse({
         "name": prompt_obj.prompt,
     })
+
+
+'''-------------------------------------------------------------------- DATA ------------------------------------------------------------------'''
+
+def data_list_create_view(request):
+    data_list = ImprovedResponse.objects.all().order_by("-id")
+    paginator = Paginator(data_list, 10)
+
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+    return render(request, "questions/datas.html", {"page_obj": page_obj})

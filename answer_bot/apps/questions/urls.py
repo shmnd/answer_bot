@@ -11,4 +11,7 @@ urlpatterns = [
     path("prompt/", views.prompt_list_create_view, name="prompt_module"),
     path("lead/delete/<int:pk>/", views.delete_prompt, name="delete_prompt"),
     path("lead/update/<int:pk>/", views.update_prompt, name="update_prompt"),
+
+    # data
+    path("data/", views.data_list_create_view, name="data_module"),
 ]

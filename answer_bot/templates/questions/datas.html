@@ -1,0 +1,141 @@
+{% extends 'layouts/apps.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+  .container {
+    max-width: 1350px;
+    margin: 0 auto;
+    padding: 1rem;
+  }
+
+  .lead-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 30px 0 20px;
+  }
+
+  .lead-header h4 {
+    font-weight: bold;
+    color: #343a40;
+    margin: 0;
+  }
+
+  .btn-sm {
+    padding: 6px 14px;
+    font-size: 0.85rem;
+  }
+
+  .table th, .table td {
+    vertical-align: middle;
+    border: 1px solid #dee2e6;
+    padding: 12px 14px;
+    font-size: 0.9rem;
+    text-align: left;
+  }
+
+  .table th {
+    background-color: #f8f9fa;
+    color: #212529;
+    font-weight: 600;
+  }
+
+  .pagination {
+    display: flex;
+    justify-content: center;
+    padding: 1rem 0;
+  }
+
+  .pagination .page-link {
+    margin: 0 4px;
+    padding: 5px 10px;
+    color: #007bff;
+    text-decoration: none;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+  }
+
+  .pagination .page-link:hover {
+    background-color: #e9ecef;
+  }
+
+  .pagination .active .page-link {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+  }
+</style>
+
+<div class="container mt-5">
+  <div class="card shadow-sm border">
+    <div class="card-body">
+
+      <div class="lead-header">
+        <h4>Prompts</h4>
+        {% if page_obj.paginator.count == 0 %}
+          <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addModal">+ Add Prompt</button>
+        {% endif %}
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+          <thead>
+            <tr>
+              <th>Qid</th>
+              <th>Questions</th>
+              <th>Option A</th>
+              <th>Option B</th>
+              <th>Option C</th>
+              <th>Option D</th>
+              <th>Correct Answer</th>
+              <th>Explanations</th>
+              <th>Human Verification</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for data in page_obj %}
+              <tr>
+                <td>{{ data.qid }}</td>
+                <td>{{ data.improved_question }}</td>
+                <td>{{ data.improved_opa }}</td>
+                <td>{{ data.improved_opb }}</td>
+                <td>{{ data.improved_opc }}</td>
+                <td>{{ data.improved_opd }}</td>
+                <td>{{ data.gpt_answer }}</td>
+                <td style="white-space: pre-wrap;">{{ data.improved_explanation }}</td>
+                <td>{{ data.flag_for_human_review }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="9" class="text-center text-muted">No prompts available. Please add a new one.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if page_obj.has_other_pages %}
+        <nav class="pagination">
+          {% if page_obj.has_previous %}
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+          {% endif %}
+
+          {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+              <span class="page-link active">{{ num }}</span>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+              <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+            {% endif %}
+          {% endfor %}
+
+          {% if page_obj.has_next %}
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+          {% endif %}
+        </nav>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}

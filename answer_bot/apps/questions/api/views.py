@@ -126,7 +126,6 @@ class ProcessMCQView(APIView):
             except AttributeError:
                 prompt_template = ""
 
-            print(prompt_template,'promptttttttttttttttttttttttttttt')
 
             prompt_2 = prompt_template.replace("{{payload}}", json.dumps(prompt_2_payload, indent=2))
 
@@ -147,9 +146,11 @@ class ProcessMCQView(APIView):
                 elif improved_output.startswith("```"):
                     improved_output = re.sub(r"^```|```$", "", improved_output.strip()).strip()
 
+                # print(improved_data,'3333333333333333333333333333333333')
+
                 improved_data = json.loads(improved_output)
 
-                print("GPT RESPONSE (Prompt 2):", improved_output)
+                # print("GPT RESPONSE (Prompt 2):", improved_output)
 
                 update_type = validated.get("type", 1)
 

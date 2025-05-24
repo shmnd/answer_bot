@@ -3,11 +3,12 @@ from django.conf import settings
 from openai import OpenAI
 from django.http import JsonResponse
 from django.views import View
-from django.shortcuts import render
+from django.shortcuts import render,redirect,get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.mixins import LoginRequiredMixin
-from apps.questions.models import ImprovedResponse, FlaggedQuestion
+from apps.questions.models import FlaggedQuestion,Prompt
+from apps.convertor.models import Questions
 
 
 
@@ -155,7 +156,7 @@ def process_bulk_question(question_text):
 
     # Find similar question
     existing_q = Questions.objects.filter(question__icontains=normalized).first()
-    print(existing_q,'heloooooooooooooooooooooooooooooo')
+    # print(existing_q,'heloooooooooooooooooooooooooooooo')
 
     if not existing_q:
         FlaggedQuestion.objects.create(
@@ -241,3 +242,40 @@ def upload_bulk_questions(request):
         file = request.FILES["file"]
         read_and_process_file(file)
         return JsonResponse({"status": "processed"})
+
+
+'''-------------------------------------------------------------- Prompt Module ----------------------------------------------------------------------'''
+
+def prompt_list_create_view(request):
+    if request.method == "POST":
+        prompt = request.POST.get("prompt")
+        if prompt:
+            Prompt.objects.create(prompt=prompt)
+        return redirect("questions:prompt_module")  # name of your url
+
+    prompts = Prompt.objects.all()
+    return render(request, "questions/prompt.html", {"prompts": prompts})
+
+
+def delete_prompt(request, pk):
+    prompt_obj = get_object_or_404(Prompt, pk=pk)
+    prompt_obj.delete()
+    
+    prompts = Prompt.objects.all()
+    return render(request, "questions/prompt.html", {"prompts": prompts})
+
+@csrf_exempt
+def update_prompt(request, pk):
+    prompt_obj = get_object_or_404(Prompt, pk=pk)
+
+    if request.method == "POST":
+        name = request.POST.get("lead_name")
+        prompt_obj.prompt = name 
+        prompt_obj.save()
+        prompts = Prompt.objects.all()
+        return render(request, "questions/prompt.html", {"prompts": prompts})
+
+    # For GET request, return current filter name
+    return JsonResponse({
+        "name": prompt_obj.prompt,
+    })

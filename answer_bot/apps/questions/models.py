@@ -27,11 +27,22 @@ class ImprovedResponse(models.Model):
 
 
     class Meta:
-        verbose_name = "Question"
-        verbose_name_plural = "Questions"
+        verbose_name = "ImprovedResponse"
+        verbose_name_plural = "ImprovedResponses"
 
     def __str__(self):
         return str(self.pk)
+    
+
+class Prompt(models.Model):
+    prompt = models.TextField()
+
+    class Meta:
+        verbose_name = "Prompt"
+        verbose_name_plural = "Prompts"
+
+    def __str__(self):
+        return str(self.prompt)
     
 
 

@@ -269,7 +269,7 @@ def update_prompt(request, pk):
     prompt_obj = get_object_or_404(Prompt, pk=pk)
 
     if request.method == "POST":
-        name = request.POST.get("lead_name")
+        name = request.POST.get("prompt")
         prompt_obj.prompt = name 
         prompt_obj.save()
         prompts = Prompt.objects.all()

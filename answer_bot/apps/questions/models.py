@@ -35,7 +35,7 @@ class ImprovedResponse(models.Model):
     
 
 class Prompt(models.Model):
-    prompt = models.TextField()
+    prompt = models.TextField(blank=True, null=True)
 
     class Meta:
         verbose_name = "Prompt"

@@ -100,11 +100,11 @@
                   onclick="editLead(this)">Edit
                 </button>
                 
-                <button class="btn btn-danger btn-sm"
+                {% comment %} <button class="btn btn-danger btn-sm"
                   onclick="deleteLead(this)"
                   data-url="{% url 'questions:delete_prompt' prompt.id %}"
                   onclick="deleteLead(this)">Delete
-                </button>
+                </button> {% endcomment %}
                 
               </div>
             </td>
@@ -132,7 +132,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <input type="text" name="prompt" id="leadNameInput" class="form-control" placeholder="Copy the Prompt" required> {% comment %} qqqqqqqqqqq  {% endcomment %}
+        <textarea name="prompt" id="leadNameInput" class="form-control" rows="10" required placeholder="Paste the full prompt here"></textarea>
       </div>
       <div class="modal-footer">
         <button type="submit" class="btn btn-primary">Save Prompt</button>
@@ -145,7 +145,7 @@
 
   function deleteLead(btn) {
     const url = btn.getAttribute("data-url");
-    if (confirm("Are you sure you want to delete this Lead?")) {
+    if (confirm("Are you sure you want to delete this Prompt?")) {
       fetch(url)
         .then(() => location.reload());
     }

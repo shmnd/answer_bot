@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from openai import OpenAI
 from django.conf import settings
-from apps.questions.models import ImprovedResponse
+from apps.questions.models import Prompt,ImprovedResponse
 from .serializers import MCQSerializer
 from answer_bot_core.helpers.response import ResponseInfo
 from drf_yasg.utils import swagger_auto_schema
@@ -121,56 +121,14 @@ class ProcessMCQView(APIView):
                 "create_newer_version": validated.get("type", 1) # or 0 depending on your UI/API input
             }
 
-            prompt_2 = f"""
-                You are an expert clinical-MCQ editor and validator. I will provide the following fields in JSON:
+            try:
+                prompt_template = Prompt.objects.last().prompt
+            except AttributeError:
+                prompt_template = ""
 
-                {json.dumps(prompt_2_payload, indent=2)}
+            print(prompt_template,'promptttttttttttttttttttttttttttt')
 
-                Do the following:
-                1. *Validate*  
-                - Extract the answer letter from chatgpt_explanation.  
-                - If it does *not* match system_answer, output exactly:
-                    json
-                    {{ "flag_for_human_review": true }}
-
-                - Otherwise continue to step 2.
-
-                2. *Question & Options*  
-                - If create_newer_version == 1:  
-                    • Rewrite the stem for clarity and precision; expand all acronyms; fix grammar; avoid any potential copyright overlap.  
-                    • Rewrite each option (A–D) to remove duplicates, correct spelling/grammar, and keep clinical accuracy.  
-                - If create_newer_version == 0:  
-                    • Keep the stem and options as close to the original as possible, but correct any typos, expand acronyms, and polish grammar.
-
-                3. *Explanation*  
-                - Merge system_explanation and chatgpt_explanation, selecting the best content from each into one structured explanation object:  
-                    json
-                    {{
-                    "overview": "...",
-                    "correct_option": "...",
-                    "others": {{ "A": "...", "B": "...", "D": "..." }}
-                    }}
-
-                4. *Output*  
-                - Return a single JSON object. If validated, the object must contain:
-                    json
-                    {{
-                    "improved_question": "...",
-                    "improved_options": {{
-                        "A": "...",
-                        "B": "...",
-                        "C": "...",
-                        "D": "..."
-                    }},
-                    "correct_answer": "C",
-                    "improved_explanation": {{
-                        "overview": "...",
-                        "correct_option": "...",
-                        "others": {{ "A": "...", "B": "...", "D": "..." }}
-                    }}
-                    }}
-                - If flagged, only output {{ "flag_for_human_review": true }} and no other keys.
-                """
+            prompt_2 = prompt_template.replace("{{payload}}", json.dumps(prompt_2_payload, indent=2))
 
             response_2 = client.chat.completions.create(
                 model="gpt-4",
@@ -190,6 +148,8 @@ class ProcessMCQView(APIView):
                     improved_output = re.sub(r"^```|```$", "", improved_output.strip()).strip()
 
                 improved_data = json.loads(improved_output)
+
+                print("GPT RESPONSE (Prompt 2):", improved_output)
 
                 update_type = validated.get("type", 1)
 

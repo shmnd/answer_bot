@@ -46,6 +46,7 @@ class ProcessMCQView(APIView):
 
             prompt_1_payload = {
                 "question_text": question,
+                "image_data": validated.get("image_url") or None,
                 "options": {
                     "A": options["A"],
                     "B": options["B"],

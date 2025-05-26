@@ -6,9 +6,11 @@ from rest_framework import status
 from openai import OpenAI
 from django.conf import settings
 from apps.questions.models import Prompt,ImprovedResponse
-from .serializers import MCQSerializer
+from .serializers import MCQSerializer,MCQSearchResultSerializer
 from answer_bot_core.helpers.response import ResponseInfo
 from drf_yasg.utils import swagger_auto_schema
+from answer_bot_core.helpers.elastic_client import es
+from drf_yasg import openapi
 
 client = OpenAI(api_key=settings.OPEN_AI_API_KEY)
 
@@ -146,11 +148,7 @@ class ProcessMCQView(APIView):
                 elif improved_output.startswith("```"):
                     improved_output = re.sub(r"^```|```$", "", improved_output.strip()).strip()
 
-                # print(improved_data,'3333333333333333333333333333333333')
-
                 improved_data = json.loads(improved_output)
-
-                # print("GPT RESPONSE (Prompt 2):", improved_output)
 
                 update_type = validated.get("type", 1)
 
@@ -206,3 +204,98 @@ class ProcessMCQView(APIView):
             self.response_format['status'] = False
             self.response_format['message'] = str(e)
             return Response(self.response_format, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+class MCQSearchView(APIView):
+    
+    def __init__(self, **kwargs):
+        self.response_format = ResponseInfo().response
+        super(MCQSearchView,self).__init__(**kwargs)
+
+    serializer_class = MCQSearchResultSerializer
+
+    @swagger_auto_schema(
+        tags=["Elastic Search"],
+        manual_parameters=[
+            openapi.Parameter(
+                name="q",
+                in_=openapi.IN_QUERY,
+                description="Search term for MCQs",
+                required=True,
+                type=openapi.TYPE_STRING
+            )
+        ]
+    )
+
+    def get(self,request):
+        try:
+            query = request.GET.get('q')
+
+            if not query:
+                # return Response({'error':"Query param 'q' is required"},status=400)
+                self.response_format['status_code'] = status.HTTP_400_BAD_REQUEST
+                self.response_format['status'] = False
+                self.response_format['message'] = "Query param 'q' is required"
+                return Response(self.response_format, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Search in ElasticSearch 
+            es_result = es.search(index="mcq_questions",body={
+                "query":{
+                    "multi_match":{
+                        "query":query,
+                        "fields":[
+
+                            "question",
+                            "opa",
+                            "opb",
+                            "opc",
+                            "opd",
+                            "correct_answer",
+                            "explanation",
+                            "improved_question",
+                            "improved_opa",
+                            "improved_opb",
+                            "improved_opc",
+                            "improved_opd",
+                            "improved_explanation"
+
+                        ],
+                        "type": "best_fields",
+                        "tie_breaker": 0.3
+                    }
+                }
+            })
+
+            # Extract matching question id 
+            matched_ids = [hit["_id"] for hit in es_result["hits"]["hits"]]
+
+            # Convert strings id into integers
+            matched_ids = [int(i) for i in matched_ids]
+
+            print("Matched IDs from Elasticsearch:", matched_ids)
+
+            print("DB IDs:", list(ImprovedResponse.objects.values_list("id", flat=True)))
+
+
+            # Fetch full details from DB
+
+            questions = ImprovedResponse.objects.filter(id__in=matched_ids)
+
+            # Serialize manually or with DRF serializer
+
+            serializer = MCQSearchResultSerializer(questions, many=True)
+
+            self.response_format['status_code'] = status.HTTP_200_OK
+            self.response_format["message"] = "success"
+            self.response_format["status"] = True
+            self.response_format["data"] =  serializer.data
+            return Response(self.response_format, status=status.HTTP_200_OK)
+
+            # return Response({"results": data})
+        
+        except Exception as e:
+            self.response_format['status_code'] = status.HTTP_500_INTERNAL_SERVER_ERROR
+            self.response_format['status'] = False
+            self.response_format['message'] = str(e)
+            return Response(self.response_format, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        

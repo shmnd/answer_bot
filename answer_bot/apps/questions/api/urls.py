@@ -4,5 +4,6 @@ from . import views
 urlpatterns = [
 
     path('questions-process/', views.ProcessMCQView.as_view(), name='process-mcq'),
+    path("search-mcq/", views.MCQSearchView.as_view(), name="search-mcq"),
 
 ]

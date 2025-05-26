@@ -40,3 +40,22 @@ class MCQSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         return ImprovedResponse.objects.create(**validated_data)
+    
+
+class MCQSearchResultSerializer(serializers.ModelSerializer):
+    options = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ImprovedResponse
+        fields = [
+            'id', 'question', 'options', 'correct_answer', 'explanation'
+        ]
+
+    def get_options(self, obj):
+        return {
+            "A": obj.opa,
+            "B": obj.opb,
+            "C": obj.opc,
+            "D": obj.opd
+        }
+

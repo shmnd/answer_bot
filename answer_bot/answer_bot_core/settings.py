@@ -167,6 +167,7 @@ AUTH_USER_MODEL = 'authentication.Users'
 
 OPEN_AI_API_KEY = os.getenv('OPEN_AI_API_KEY')
 
+ELASTIC_USER_PASS = os.getenv('ELASTIC_USER_PASS')
 
 
 SWAGGER_SETTINGS = {

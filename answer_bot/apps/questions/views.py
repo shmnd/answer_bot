@@ -284,7 +284,7 @@ def update_prompt(request, pk):
 
 def data_list_create_view(request):
     data_list = ImprovedResponse.objects.all().order_by("-id")
-    paginator = Paginator(data_list, 10)
+    paginator = Paginator(data_list, 30)
 
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)

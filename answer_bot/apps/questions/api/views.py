@@ -229,13 +229,12 @@ class MCQSearchView(APIView):
 
     def get(self,request):
         try:
-            query = request.GET.get('q')
+            query = request.GET.get('name')
 
             if not query:
-                # return Response({'error':"Query param 'q' is required"},status=400)
                 self.response_format['status_code'] = status.HTTP_400_BAD_REQUEST
                 self.response_format['status'] = False
-                self.response_format['message'] = "Query param 'q' is required"
+                self.response_format['message'] = "Query param 'name' is required"
                 return Response(self.response_format, status=status.HTTP_400_BAD_REQUEST)
             
             # Search in ElasticSearch 
@@ -246,19 +245,12 @@ class MCQSearchView(APIView):
                         "fields":[
 
                             "question",
-                            "opa",
-                            "opb",
-                            "opc",
-                            "opd",
-                            "correct_answer",
-                            "explanation",
-                            "improved_question",
-                            "improved_opa",
-                            "improved_opb",
-                            "improved_opc",
-                            "improved_opd",
-                            "improved_explanation"
-
+                            # "opa",
+                            # "opb",
+                            # "opc",
+                            # "opd",
+                            # "correct_answer",
+                            # "explanation",
                         ],
                         "type": "best_fields",
                         "tie_breaker": 0.3
@@ -272,10 +264,7 @@ class MCQSearchView(APIView):
             # Convert strings id into integers
             matched_ids = [int(i) for i in matched_ids]
 
-            print("Matched IDs from Elasticsearch:", matched_ids)
-
-            print("DB IDs:", list(ImprovedResponse.objects.values_list("id", flat=True)))
-
+            # print("Matched IDs from Elasticsearch:", matched_ids)
 
             # Fetch full details from DB
 
@@ -290,8 +279,6 @@ class MCQSearchView(APIView):
             self.response_format["status"] = True
             self.response_format["data"] =  serializer.data
             return Response(self.response_format, status=status.HTTP_200_OK)
-
-            # return Response({"results": data})
         
         except Exception as e:
             self.response_format['status_code'] = status.HTTP_500_INTERNAL_SERVER_ERROR

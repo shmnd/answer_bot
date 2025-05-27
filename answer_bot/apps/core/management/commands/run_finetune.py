@@ -8,4 +8,4 @@ response = client.fine_tuning.jobs.create(
     model="gpt-4-1106-preview"
 )
 
-print(response)
+# print(response)

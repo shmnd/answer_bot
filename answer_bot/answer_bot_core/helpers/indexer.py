@@ -11,6 +11,3 @@ def index_all_mcqs():
         })
 
 
-
-# from answer_bot_core.helpers.indexer import index_all_mcqs
-# index_all_mcqs()

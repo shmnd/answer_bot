@@ -1,9 +1,9 @@
 import json
 import re
+from openai import OpenAI
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from openai import OpenAI
 from django.conf import settings
 from apps.questions.models import Prompt,ImprovedResponse
 from .serializers import MCQSerializer,MCQSearchResultSerializer
@@ -11,6 +11,7 @@ from answer_bot_core.helpers.response import ResponseInfo
 from drf_yasg.utils import swagger_auto_schema
 from answer_bot_core.helpers.elastic_client import es
 from drf_yasg import openapi
+from answer_bot_core.helpers.keyword_picker import extract_keyword_from_question
 
 client = OpenAI(api_key=settings.OPEN_AI_API_KEY)
 
@@ -218,7 +219,7 @@ class MCQSearchView(APIView):
         tags=["Elastic Search"],
         manual_parameters=[
             openapi.Parameter(
-                name="q",
+                name="name",
                 in_=openapi.IN_QUERY,
                 description="Search term for MCQs",
                 required=True,
@@ -237,13 +238,14 @@ class MCQSearchView(APIView):
                 self.response_format['message'] = "Query param 'name' is required"
                 return Response(self.response_format, status=status.HTTP_400_BAD_REQUEST)
             
+            search_keywords = extract_keyword_from_question(query)
+            
             # Search in ElasticSearch 
             es_result = es.search(index="mcq_questions",body={
                 "query":{
                     "multi_match":{
-                        "query":query,
+                        "query":search_keywords,
                         "fields":[
-
                             "question",
                             # "opa",
                             # "opb",
@@ -264,14 +266,10 @@ class MCQSearchView(APIView):
             # Convert strings id into integers
             matched_ids = [int(i) for i in matched_ids]
 
-            # print("Matched IDs from Elasticsearch:", matched_ids)
-
             # Fetch full details from DB
-
             questions = ImprovedResponse.objects.filter(id__in=matched_ids)
 
             # Serialize manually or with DRF serializer
-
             serializer = MCQSearchResultSerializer(questions, many=True)
 
             self.response_format['status_code'] = status.HTTP_200_OK

@@ -6,5 +6,5 @@ password = settings.ELASTIC_USER_PASS
 es = Elasticsearch(
     "https://localhost:9200",
     basic_auth=("elastic", password),
-    verify_certs=False, # Use only for local development; for prod, set up certs properly
+    verify_certs=True, # "False" Use only for local development; for prod, set up certs properly
 )

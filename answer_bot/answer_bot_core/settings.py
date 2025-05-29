@@ -167,6 +167,8 @@ AUTH_USER_MODEL = 'authentication.Users'
 
 OPEN_AI_API_KEY = os.getenv('OPEN_AI_API_KEY')
 
+ELASTIC_USER = os.getenv('ELASTIC_USER')
+
 ELASTIC_USER_PASS = os.getenv('ELASTIC_USER_PASS')
 
 CA_CERTS_PATH = os.getenv('CA_CERTS_PATH')

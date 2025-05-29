@@ -3,7 +3,7 @@ from django.conf import settings
 
 es = Elasticsearch(
     "https://localhost:9200",
-    basic_auth=("elastic", settings.ELASTIC_USER_PASS),
-    verify_certs=True,
+    basic_auth=(settings.ELASTIC_USER, settings.ELASTIC_USER_PASS),
+    verify_certs=False,
     ca_certs=settings.CA_CERTS_PATH,
 )

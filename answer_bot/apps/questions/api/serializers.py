@@ -59,3 +59,12 @@ class MCQSearchResultSerializer(serializers.ModelSerializer):
             "D": obj.opd
         }
 
+class GenerateMCQsQuestions(serializers.ModelSerializer):
+    questions = serializers.CharField(required=True)
+
+    class Meta:
+        model = ImprovedResponse
+        fields = ['question']
+
+    def create(self, validated_data):
+        return ImprovedResponse.objects.create(**validated_data)

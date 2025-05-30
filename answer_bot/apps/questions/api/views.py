@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.conf import settings
 from apps.questions.models import Prompt,ImprovedResponse
-from .serializers import MCQSerializer,MCQSearchResultSerializer
+from .serializers import MCQSerializer,MCQSearchResultSerializer,GenerateMCQsQuestions
 from answer_bot_core.helpers.response import ResponseInfo
 from drf_yasg.utils import swagger_auto_schema
 from answer_bot_core.helpers.elastic_client import es
@@ -207,6 +207,8 @@ class ProcessMCQView(APIView):
             return Response(self.response_format, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
+
+# '''''''''''''''''''''''''''''''''''''''''''''''''''''''''' SERACHING BY QUESTION '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 class MCQSearchView(APIView):
     
     def __init__(self, **kwargs):
@@ -284,3 +286,109 @@ class MCQSearchView(APIView):
             self.response_format['message'] = str(e)
             return Response(self.response_format, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
+
+# ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''' QUESTION DATA + CHAT GPT ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+        
+class GenerateMCQSAnswersView(APIView):
+    
+    def __init__(self, **kwargs):
+        self.response_format = ResponseInfo().response
+        super(GenerateMCQSAnswersView, self).__init__(**kwargs)
+
+    serializer_class = GenerateMCQsQuestions
+
+    @swagger_auto_schema(
+        tags=["GPT+EXISTING EXPM"],
+        manual_parameters=[
+            openapi.Parameter(
+                name="Question",
+                in_=openapi.IN_QUERY,
+                description="Generate answers for MCQs",
+                required=True,
+                type=openapi.TYPE_STRING
+            )
+        ]
+    )
+    def get(self, request):
+        try:
+            query = request.GET.get('Question')
+
+            if not query:
+                self.response_format['status_code'] = status.HTTP_400_BAD_REQUEST
+                self.response_format['status'] = False
+                self.response_format['message'] = "Query param 'Question' is required"
+                return Response(self.response_format, status=status.HTTP_400_BAD_REQUEST)
+
+            search_keywords = extract_keyword_from_question(query)
+
+            es_result = es.search(index="mcq_questions", body={
+                "query": {
+                    "multi_match": {
+                        "query": search_keywords,
+                        "fields": ["question"],
+                        "type": "best_fields",
+                        "tie_breaker": 0.3
+                    }
+                },
+                "size": 5
+            })
+
+            hits = es_result["hits"]["hits"]
+
+            if not hits:
+                gpt_prompt = (
+                    "No similar question found in the database.\n"
+                    "Use your own knowledge to analyze and improve the following MCQ:\n\n"
+                    f"Q: {query}"
+                )
+                self.response_format['status'] = False
+                self.response_format['message'] = "No matches found. Prompt created without historical context."
+                self.response_format['data'] = {
+                    "top_score": 0,
+                    "total_hits": 0,
+                    "good_matches": 0,
+                    "gpt_prompt_preview": gpt_prompt.strip()
+                }
+                return Response(self.response_format, status=status.HTTP_200_OK)
+
+            top_score = hits[0]["_score"]
+            good_matches = [hit for hit in hits if hit["_score"] >= 10]
+
+            context_blocks = []
+            for hit in good_matches:
+                source = hit["_source"]
+                block = (
+                    f"Context (Score: {round(hit['_score'], 2)}):\n"
+                    f"Q: {source.get('question')}\n"
+                    f"A. {source.get('opa')}\n"
+                    f"B. {source.get('opb')}\n"
+                    f"C. {source.get('opc')}\n"
+                    f"D. {source.get('opd')}\n"
+                    f"Correct answer: {source.get('correct_answer')}\n"
+                    f"Explanation: {source.get('explanation')}"
+                )
+                context_blocks.append(block.strip())
+
+            gpt_prompt = (
+                "You are given a new MCQ and similar historical questions.\n"
+                "Use these to validate, improve, and explain the new MCQ.\n\n"
+                f"{chr(10).join(context_blocks[:3])}\n\n"
+                f"New MCQ:\nQ: {query}"
+            )
+
+            self.response_format['status'] = True
+            self.response_format['message'] = "Relevant MCQs fetched and prompt prepared"
+            self.response_format['data'] = {
+                "top_score": top_score,
+                "total_hits": len(hits),
+                "good_matches": len(good_matches),
+                "gpt_prompt_preview": gpt_prompt.strip()
+            }
+            return Response(self.response_format, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            self.response_format['status_code'] = status.HTTP_500_INTERNAL_SERVER_ERROR
+            self.response_format['status'] = False
+            self.response_format['message'] = str(e)
+            return Response(self.response_format, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

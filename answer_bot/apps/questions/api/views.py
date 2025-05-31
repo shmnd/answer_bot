@@ -12,6 +12,7 @@ from drf_yasg.utils import swagger_auto_schema
 from answer_bot_core.helpers.elastic_client import es
 from drf_yasg import openapi
 from answer_bot_core.helpers.keyword_picker import extract_keyword_from_question
+from answer_bot_core.helpers.prompt import build_gpt_prompt
 
 client = OpenAI(api_key=settings.OPEN_AI_API_KEY)
 
@@ -351,7 +352,7 @@ class GenerateMCQSAnswersView(APIView):
                 }
                 return Response(self.response_format, status=status.HTTP_200_OK)
 
-            top_score = hits[0]["_score"]
+            top_score = hits[0]["_score"] if hits else 0
             good_matches = [hit for hit in hits if hit["_score"] >= 10]
 
             context_blocks = []
@@ -359,6 +360,7 @@ class GenerateMCQSAnswersView(APIView):
                 source = hit["_source"]
                 block = (
                     f"Context (Score: {round(hit['_score'], 2)}):\n"
+                    f"ID: {source.get('qid')}\n"
                     f"Q: {source.get('question')}\n"
                     f"A. {source.get('opa')}\n"
                     f"B. {source.get('opb')}\n"
@@ -369,11 +371,82 @@ class GenerateMCQSAnswersView(APIView):
                 )
                 context_blocks.append(block.strip())
 
-            gpt_prompt = (
-                "You are given a new MCQ and similar historical questions.\n"
-                "Use these to validate, improve, and explain the new MCQ.\n\n"
-                f"{chr(10).join(context_blocks[:3])}\n\n"
-                f"New MCQ:\nQ: {query}"
+            if good_matches:
+                best_source = good_matches[0]["_source"]
+                opa = best_source.get("opa", "None")
+                opb = best_source.get("opb", "None")
+                opc = best_source.get("opc", "None")
+                opd = best_source.get("opd", "None")
+                correct_answer = best_source.get("correct_answer", "None")
+                explanation = best_source.get("explanation", "None")
+            else:
+                opa = opb = opc = opd = correct_answer = explanation = "None"
+
+            # --- Build Prompt ---
+
+            gpt_prompt = build_gpt_prompt(
+                query=query,
+                context_blocks=context_blocks,
+                opa=opa,
+                opb=opb,
+                opc=opc,
+                opd=opd,
+                correct_answer=correct_answer,
+                explanation=explanation,
+            )
+
+            # --- GPT Request ---
+            response = client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "Strictly follow the MCQ editor behavior and output JSON only."},
+                    {"role": "user", "content": gpt_prompt},
+                ],
+                temperature=0.3,
+            )
+            gpt_result = response.choices[0].message.content
+
+            # --- Parse GPT JSON ---
+            try:
+                parsed = json.loads(gpt_result)
+            except json.JSONDecodeError:
+                self.response_format.update({
+                    "status": False,
+                    "status_code": 500,
+                    "message": "GPT returned invalid JSON",
+                    "data": {"raw_output": gpt_result}
+                })
+                return Response(self.response_format, status=500)
+            
+            # --- Save to DB ---
+            qid = request.GET.get("qid")
+            qid = int(qid) if qid else None
+
+            filter_kwargs = {"qid": qid} if qid else {"question": query}
+
+            print(filter_kwargs,'1111111111111111111111')
+
+            ImprovedResponse.objects.update_or_create(
+                **filter_kwargs,
+                defaults={
+                    "question": query,
+                    "opa": opa,
+                    "opb": opb,
+                    "opc": opc,
+                    "opd": opd,
+                    "correct_answer": correct_answer,
+                    "explanation": explanation,
+                    "gpt_answer": parsed.get("improved_correct_answer"),
+                    "gpt_explanation": parsed.get("improved_explanation"),
+                    "improved_question": parsed.get("improved_question"),
+                    "improved_opa": parsed.get("improved_opa"),
+                    "improved_opb": parsed.get("improved_opb"),
+                    "improved_opc": parsed.get("improved_opc"),
+                    "improved_opd": parsed.get("improved_opd"),
+                    "improved_explanation": parsed.get("improved_explanation"),
+                    "type": 1,
+                    "flag_for_human_review": not parsed.get("improved_correct_answer")
+                }
             )
 
             self.response_format['status'] = True
@@ -382,7 +455,7 @@ class GenerateMCQSAnswersView(APIView):
                 "top_score": top_score,
                 "total_hits": len(hits),
                 "good_matches": len(good_matches),
-                "gpt_prompt_preview": gpt_prompt.strip()
+                "gpt_prompt_preview": gpt_result
             }
             return Response(self.response_format, status=status.HTTP_200_OK)
 

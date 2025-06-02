@@ -323,6 +323,7 @@ class GenerateMCQSAnswersView(APIView):
             search_keywords = extract_keyword_from_question(query)
 
             es_result = es.search(index="mcq_questions", body={
+                "_source": ["qid", "question", "opa", "opb", "opc", "opd", "correct_answer", "explanation"],
                 "query": {
                     "multi_match": {
                         "query": search_keywords,
@@ -352,7 +353,7 @@ class GenerateMCQSAnswersView(APIView):
                 }
                 return Response(self.response_format, status=status.HTTP_200_OK)
 
-            top_score = hits[0]["_score"] if hits else 0
+            # top_score = hits[0]["_score"] if hits else 0
             good_matches = [hit for hit in hits if hit["_score"] >= 10]
 
             context_blocks = []
@@ -373,6 +374,7 @@ class GenerateMCQSAnswersView(APIView):
 
             if good_matches:
                 best_source = good_matches[0]["_source"]
+                qid = best_source.get("qid","None")
                 opa = best_source.get("opa", "None")
                 opb = best_source.get("opb", "None")
                 opc = best_source.get("opc", "None")
@@ -423,8 +425,6 @@ class GenerateMCQSAnswersView(APIView):
             qid = int(qid) if qid else None
 
             filter_kwargs = {"qid": qid} if qid else {"question": query}
-
-            print(filter_kwargs,'1111111111111111111111')
 
             ImprovedResponse.objects.update_or_create(
                 **filter_kwargs,

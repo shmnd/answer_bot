@@ -452,10 +452,16 @@ class GenerateMCQSAnswersView(APIView):
             self.response_format['status'] = True
             self.response_format['message'] = "Relevant MCQs fetched and prompt prepared"
             self.response_format['data'] = {
-                "top_score": top_score,
-                "total_hits": len(hits),
-                "good_matches": len(good_matches),
-                "gpt_prompt_preview": gpt_result
+                "qid": qid,
+                "type": 1,
+                "new_question": parsed.get("improved_question"),
+                "new_op1": parsed.get("improved_opa"),
+                "new_op2": parsed.get("improved_opb"),
+                "new_op3": parsed.get("improved_opc"),
+                "new_op4": parsed.get("improved_opd"),
+                "new_cop": parsed.get("improved_correct_answer"),
+                "new_expm": parsed.get("improved_explanation"),
+                "flag_for_human_review": not bool(parsed.get("improved_correct_answer"))
             }
             return Response(self.response_format, status=status.HTTP_200_OK)
 
@@ -464,4 +470,3 @@ class GenerateMCQSAnswersView(APIView):
             self.response_format['status'] = False
             self.response_format['message'] = str(e)
             return Response(self.response_format, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-

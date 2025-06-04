@@ -13,9 +13,11 @@ from answer_bot_core.helpers.elastic_client import es
 from drf_yasg import openapi
 from answer_bot_core.helpers.keyword_picker import extract_keyword_from_question
 from answer_bot_core.helpers.prompt import build_gpt_prompt
+import logging
+logger = logging.getLogger(__name__)
+
 
 client = OpenAI(api_key=settings.OPEN_AI_API_KEY)
-
 class ProcessMCQView(APIView):
     def __init__(self, **kwargs):
         self.response_format = ResponseInfo().response
@@ -41,6 +43,7 @@ class ProcessMCQView(APIView):
 
             # Step 1: Prompt 1 - get GPT answer
             question = validated.get("question")
+            logger.info(f"{question} - errorrrrrrrrrrrrrrrrrrrrrrrrrrrrrr")
             options = {
                 "A": validated.get("opa"),
                 "B": validated.get("opb"),

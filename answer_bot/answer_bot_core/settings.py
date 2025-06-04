@@ -14,6 +14,7 @@ import os,dj_database_url,warnings
 from pathlib import Path
 from django.core.management.utils import get_random_secret_key
 from dotenv import load_dotenv,find_dotenv
+import logging
 
 load_dotenv(find_dotenv(), override=True, verbose=True)
 
@@ -190,3 +191,18 @@ SWAGGER_SETTINGS = {
     
 }
 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}

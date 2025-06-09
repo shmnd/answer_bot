@@ -1,19 +1,20 @@
 import json
 import re
+import logging
+from django.conf import settings
 from openai import OpenAI
+from bs4 import BeautifulSoup
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from django.conf import settings
-from apps.questions.models import Prompt,ImprovedResponse
+from apps.questions.models import Prompt,ImprovedResponse,Keywords,ElasticSearch
 from .serializers import MCQSerializer,MCQSearchResultSerializer,GenerateMCQsQuestions
 from answer_bot_core.helpers.response import ResponseInfo
 from drf_yasg.utils import swagger_auto_schema
 from answer_bot_core.helpers.elastic_client import es
 from drf_yasg import openapi
 from answer_bot_core.helpers.keyword_picker import extract_keyword_from_question
-from answer_bot_core.helpers.prompt import build_gpt_prompt
-import logging
+from answer_bot_core.helpers.prompt import build_gpt_prompt,build_gpt_prompt2
 logger = logging.getLogger(__name__)
 
 
@@ -43,7 +44,6 @@ class ProcessMCQView(APIView):
 
             # Step 1: Prompt 1 - get GPT answer
             question = validated.get("question")
-            logger.info(f"{question} - errorrrrrrrrrrrrrrrrrrrrrrrrrrrrrr")
             options = {
                 "A": validated.get("opa"),
                 "B": validated.get("opb"),
@@ -90,7 +90,6 @@ class ProcessMCQView(APIView):
             gpt_response = response_1.choices[0].message.content.strip()
 
             # Extract answer letter
-            
             match = re.search(r"(?i)answer[:\-]?\s*([A-D])", gpt_response)
             gpt_answer_letter = match.group(1).upper() if match else None
 
@@ -341,11 +340,6 @@ class GenerateMCQSAnswersView(APIView):
             hits = es_result["hits"]["hits"]
 
             if not hits:
-                gpt_prompt = (
-                    "No similar question found in the database.\n"
-                    "Use your own knowledge to analyze and improve the following MCQ:\n\n"
-                    f"Q: {query}"
-                )
                 self.response_format['status'] = False
                 self.response_format['message'] = "No matches found. Prompt created without historical context."
                 self.response_format['data'] = {
@@ -356,7 +350,6 @@ class GenerateMCQSAnswersView(APIView):
                 }
                 return Response(self.response_format, status=status.HTTP_200_OK)
 
-            # top_score = hits[0]["_score"] if hits else 0
             good_matches = [hit for hit in hits if hit["_score"] >= 10]
 
             context_blocks = []
@@ -364,14 +357,9 @@ class GenerateMCQSAnswersView(APIView):
                 source = hit["_source"]
                 block = (
                     f"Context (Score: {round(hit['_score'], 2)}):\n"
-                    f"ID: {source.get('qid')}\n"
-                    f"Q: {source.get('question')}\n"
-                    f"A. {source.get('opa')}\n"
-                    f"B. {source.get('opb')}\n"
-                    f"C. {source.get('opc')}\n"
-                    f"D. {source.get('opd')}\n"
-                    f"Correct answer: {source.get('correct_answer')}\n"
-                    f"Explanation: {source.get('explanation')}"
+                    f"subject: {source.get('subject')}\n"
+                    f"pearl_title: {source.get('pearl_title')}\n"
+                    f"pearl_desc: {source.get('pearl_desc')}"
                 )
                 context_blocks.append(block.strip())
 
@@ -388,7 +376,6 @@ class GenerateMCQSAnswersView(APIView):
                 opa = opb = opc = opd = correct_answer = explanation = "None"
 
             # --- Build Prompt ---
-
             gpt_prompt = build_gpt_prompt(
                 query=query,
                 context_blocks=context_blocks,
@@ -429,6 +416,19 @@ class GenerateMCQSAnswersView(APIView):
 
             filter_kwargs = {"qid": qid} if qid else {"question": query}
 
+            # Clean explanation text
+            raw_html = json.dumps(parsed.get("improved_explanation", {}), indent=2)
+            clean_exmp = BeautifulSoup(raw_html, "html.parser").get_text().strip().replace('\n', ' ')
+            logger.debug(f"{clean_exmp} - cleaned explanation content")
+
+            correct_answer = str(correct_answer).strip().upper()
+            if correct_answer not in ["A", "B", "C", "D"]:
+                correct_answer = correct_answer[-1:] if correct_answer else None
+
+            gpt_answer = parsed.get("correct_answer", "").strip().upper()
+            if gpt_answer not in ["A", "B", "C", "D"]:
+                gpt_answer = gpt_answer[-1:] if gpt_answer else None
+
             ImprovedResponse.objects.update_or_create(
                 **filter_kwargs,
                 defaults={
@@ -439,14 +439,14 @@ class GenerateMCQSAnswersView(APIView):
                     "opd": opd,
                     "correct_answer": correct_answer,
                     "explanation": explanation,
-                    "gpt_answer": parsed.get("improved_correct_answer"),
+                    "gpt_answer":gpt_answer,
                     "gpt_explanation": parsed.get("improved_explanation"),
                     "improved_question": parsed.get("improved_question"),
-                    "improved_opa": parsed.get("improved_opa"),
-                    "improved_opb": parsed.get("improved_opb"),
-                    "improved_opc": parsed.get("improved_opc"),
-                    "improved_opd": parsed.get("improved_opd"),
-                    "improved_explanation": parsed.get("improved_explanation"),
+                    "improved_opa": parsed.get("improved_options", {}).get("A"),
+                    "improved_opb": parsed.get("improved_options", {}).get("B"),
+                    "improved_opc": parsed.get("improved_options", {}).get("C"),
+                    "improved_opd": parsed.get("improved_options", {}).get("D"),
+                    "improved_explanation": clean_exmp,
                     "type": 1,
                     "flag_for_human_review": not parsed.get("improved_correct_answer")
                 }
@@ -458,17 +458,196 @@ class GenerateMCQSAnswersView(APIView):
                 "qid": qid,
                 "type": 1,
                 "new_question": parsed.get("improved_question"),
-                "new_op1": parsed.get("improved_opa"),
-                "new_op2": parsed.get("improved_opb"),
-                "new_op3": parsed.get("improved_opc"),
-                "new_op4": parsed.get("improved_opd"),
-                "new_cop": parsed.get("improved_correct_answer"),
+                "new_op1": parsed.get("improved_options", {}).get("A"),
+                "new_op2": parsed.get("improved_options", {}).get("B"),
+                "new_op3": parsed.get("improved_options", {}).get("C"),
+                "new_op4": parsed.get("improved_options", {}).get("D"),
+                "new_cop": parsed.get("correct_answer"),
                 "new_expm": parsed.get("improved_explanation"),
-                "flag_for_human_review": not bool(parsed.get("improved_correct_answer"))
+                "flag_for_human_review": not bool(parsed.get("correct_answer"))
             }
             return Response(self.response_format, status=status.HTTP_200_OK)
 
-        except Exception as e:
+        except Exception as e:            
+            self.response_format['status_code'] = status.HTTP_500_INTERNAL_SERVER_ERROR
+            self.response_format['status'] = False
+            self.response_format['message'] = str(e)
+            return Response(self.response_format, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+# //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+class GenerateAnswersView(APIView):
+    
+    def __init__(self, **kwargs):
+        self.response_format = ResponseInfo().response
+        super(GenerateAnswersView, self).__init__(**kwargs)
+
+    serializer_class = GenerateMCQsQuestions
+
+    @swagger_auto_schema(request_body=GenerateMCQsQuestions,tags=["GPT+ES"])
+
+    def post(self, request):
+        try:
+            serializer = self.serializer_class(data = request.data, context={'request': request})
+
+            if not serializer.is_valid():
+                self.response_format['status_code'] = status.HTTP_400_BAD_REQUEST
+                self.response_format['status'] = False
+                self.response_format['message'] = "Invalid data"
+                self.response_format['errors'] = serializer.errors
+                return Response(self.response_format, status=status.HTTP_400_BAD_REQUEST)
+            
+            # ✅ Combine all relevant fields into a single string for keyword extraction
+            combined_text = " ".join([
+                serializer.validated_data.get('question', ''),
+                serializer.validated_data.get('opa', ''),
+                serializer.validated_data.get('opb', ''),
+                serializer.validated_data.get('opc', ''),
+                serializer.validated_data.get('opd', ''),
+                serializer.validated_data.get('correct_answer', ''),
+                serializer.validated_data.get('explanation', ''),
+            ])
+
+            keyword_list = extract_keyword_from_question(combined_text)
+            logger.info(f"{keyword_list}-000000000000000000000000000000000000000000000000000000000")
+            Keywords.objects.create(keyword_list)
+            Keywords.save()
+
+
+            search_string = " ".join(keyword_list) 
+
+            es_result = es.search(index="db_pearl_m_index", body={
+                "_source": ["pid", "subject", "pearl_title", "pearl_desc"],
+                "query": {
+                    "multi_match": {
+                        "query": search_string,
+                       "fields": ["subject", "pearl_title", "pearl_desc"],
+                        "type": "best_fields",
+                        "tie_breaker": 0.3
+                    }
+                },
+                "size": 5
+            })
+
+            hits = es_result["hits"]["hits"]
+
+            logger.info(f"{hits}-elastic search dataaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+
+            if not hits:
+                self.response_format['status'] = False
+                self.response_format['message'] = "No matches found. Prompt created without historical context."
+                self.response_format['data'] = {
+                    "top_score": 0,
+                    "total_hits": 0,
+                    "good_matches": 0,
+                    "gpt_prompt_preview": gpt_prompt.strip()
+                }
+                return Response(self.response_format, status=status.HTTP_200_OK)
+
+            good_matches = [hit for hit in hits if hit["_score"] >= 10]
+
+            context_blocks = []
+            for hit in good_matches:
+                source = hit["_source"]
+                block = (
+                    f"Context (Score: {round(hit['_score'], 2)}):\n"
+                    f"subject: {source.get('subject')}\n"
+                    f"pearl_title: {source.get('pearl_title')}\n"
+                    f"pearl_desc: {source.get('pearl_desc')}"
+                )
+                context_blocks.append(block.strip())
+            
+            if good_matches:
+                best_source = good_matches[0]["_source"]
+                subject = best_source.get("subject")
+                pearl_title = best_source.get("pearl_title")
+                pearl_desc = best_source.get("pearl_desc")
+            else:
+                subject = pearl_title = pearl_desc = "None"
+
+            # --- Build Prompt ---
+            gpt_prompt = build_gpt_prompt2(
+                question = combined_text,
+                context_blocks=context_blocks,
+                subject=subject,
+                pearl_title=pearl_title,
+                pearl_desc=pearl_desc,
+            )
+
+            # --- GPT Request ---
+            response = client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "Strictly follow the MCQ editor behavior and output JSON only."},
+                    {"role": "user", "content": gpt_prompt},
+                ],
+                temperature=0.3,
+            )
+            gpt_result = response.choices[0].message.content
+
+            logger.info(f'{type(gpt_result)}-typeeeeeeeeeeeeeeeeeeeeeeeeeee')
+
+            logger.info(f"{gpt_result}-4444444444444444444444444444444444")
+
+            # --- Parse GPT JSON ---
+            try:
+                parsed = json.loads(gpt_result)
+            except json.JSONDecodeError:
+                self.response_format.update({
+                    "status": False,
+                    "status_code": 500,
+                    "message": "GPT returned invalid JSON",
+                    "data": {"raw_output": gpt_result}
+                })
+                return Response(self.response_format, status=500)
+            
+            # --- Save to DB ---
+            # Clean explanation text
+            raw_html = json.dumps(parsed.get("improved_explanation", {}), indent=2)
+            clean_exmp = BeautifulSoup(raw_html, "html.parser").get_text().strip().replace('\n', ' ')
+            logger.info(f"{clean_exmp} - cleaned explanation content -5555555555555555555555555555")
+
+            gpt_answer = parsed.get("correct_answer", "").strip().upper()
+            if gpt_answer not in ["A", "B", "C", "D"]:
+                gpt_answer = gpt_answer[-1:] if gpt_answer else None
+
+            logger.info(f"{gpt_answer}-6666666666666666666666666")
+
+            ImprovedResponse.objects.update_or_create(
+                defaults={
+                    "gpt_answer":gpt_answer,
+                    "gpt_explanation": parsed.get("improved_explanation"),
+                    "improved_question": parsed.get("improved_question"),
+                    "improved_opa": parsed.get("improved_options", {}).get("A"),
+                    "improved_opb": parsed.get("improved_options", {}).get("B"),
+                    "improved_opc": parsed.get("improved_options", {}).get("C"),
+                    "improved_opd": parsed.get("improved_options", {}).get("D"),
+                    "improved_explanation": clean_exmp,
+                    "type": 1,
+                    "flag_for_human_review": not parsed.get("improved_correct_answer")
+                }
+            )
+
+            self.response_format['status'] = True
+            self.response_format['message'] = "Relevant MCQs fetched and prompt prepared"
+            self.response_format['data'] = {
+                "type": 1,
+                "new_question": parsed.get("improved_question"),
+                "new_op1": parsed.get("improved_options", {}).get("A"),
+                "new_op2": parsed.get("improved_options", {}).get("B"),
+                "new_op3": parsed.get("improved_options", {}).get("C"),
+                "new_op4": parsed.get("improved_options", {}).get("D"),
+                "new_cop": parsed.get("correct_answer"),
+                "new_expm": parsed.get("improved_explanation"),
+                "flag_for_human_review": not bool(parsed.get("correct_answer"))
+            }
+            return Response(self.response_format, status=status.HTTP_200_OK)
+
+        except Exception as e:            
             self.response_format['status_code'] = status.HTTP_500_INTERNAL_SERVER_ERROR
             self.response_format['status'] = False
             self.response_format['message'] = str(e)

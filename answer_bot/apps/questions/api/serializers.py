@@ -60,11 +60,19 @@ class MCQSearchResultSerializer(serializers.ModelSerializer):
         }
 
 class GenerateMCQsQuestions(serializers.ModelSerializer):
-    questions = serializers.CharField(required=True)
+    question = serializers.CharField(required=True)
+    opa = serializers.CharField(required=True)
+    opb = serializers.CharField(required=True)
+    opc = serializers.CharField(required=True)
+    opd = serializers.CharField(required=True)
+    correct_answer = serializers.CharField(required=True)
+    explanation = serializers.CharField(required=True)
+
 
     class Meta:
         model = ImprovedResponse
-        fields = ['question']
+        fields = ['question', 'opa', 'opb', 'opc', 'opd', 'correct_answer', 'explanation']
 
     def create(self, validated_data):
         return ImprovedResponse.objects.create(**validated_data)
+    

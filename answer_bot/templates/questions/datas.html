@@ -82,7 +82,6 @@
         <table class="table table-bordered table-hover">
           <thead>
             <tr>
-              <th>Qid</th>
               <th>Questions</th>
               <th>Option A</th>
               <th>Option B</th>
@@ -96,7 +95,6 @@
           <tbody>
             {% for data in page_obj %}
               <tr>
-                <td>{{ data.qid }}</td>
                 <td>{{ data.improved_question }}</td>
                 <td>{{ data.improved_opa }}</td>
                 <td>{{ data.improved_opb }}</td>

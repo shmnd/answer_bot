@@ -61,3 +61,37 @@ class FlaggedQuestion(models.Model):
     def __str__(self):
         return str(self.pk)
 
+
+
+
+class DbPearlM(models.Model):
+    pid = models.AutoField(primary_key=True)  
+    subject = models.CharField(max_length=255, blank=True, null=True)
+    pearl_title = models.CharField(max_length=255, blank=True, null=True)
+    pearl_desc = models.TextField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'db_pearl_m'  # Use your actual table name
+        managed = False  # <- Django won't try to create or alter this table
+
+    def __str__(self):
+        return f"{self.pearl_title} ({self.pid})"
+    
+
+
+class Keywords(models.Model):
+    keywords = models.CharField(max_length=255,blank=True, null=True)
+
+    def __str__(self):
+        return str(self.keywords)
+    
+
+class ElasticSearch(models.Model):
+    elastic_result = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return str(self.elastic_result)
+
+
+
+    

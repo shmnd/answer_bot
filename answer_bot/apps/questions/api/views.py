@@ -514,11 +514,9 @@ class GenerateAnswersView(APIView):
 
             keyword_list = extract_keyword_from_question(combined_text)
             logger.info(f"{keyword_list}-000000000000000000000000000000000000000000000000000000000")
-            Keywords.objects.create(keyword_list)
-            Keywords.save()
-
 
             search_string = " ".join(keyword_list) 
+            Keywords.objects.create(keywords=keyword_list)
 
             es_result = es.search(index="db_pearl_m_index", body={
                 "_source": ["pid", "subject", "pearl_title", "pearl_desc"],
@@ -534,6 +532,9 @@ class GenerateAnswersView(APIView):
             })
 
             hits = es_result["hits"]["hits"]
+            for i in hits:
+                logger.info(f'{i}-iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii')
+                ElasticSearch.objects.create(elastic_result=i)
 
             logger.info(f"{hits}-elastic search dataaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
 

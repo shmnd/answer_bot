@@ -80,7 +80,7 @@ class DbPearlM(models.Model):
 
 
 class Keywords(models.Model):
-    keywords = models.CharField(max_length=255,blank=True, null=True)
+    keywords = models.CharField(max_length=1000,blank=True, null=True)
 
     def __str__(self):
         return str(self.keywords)
